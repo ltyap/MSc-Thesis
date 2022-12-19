@@ -1,0 +1,35 @@
+#create nn spec for discriminator and generator
+config = {
+    "noise_dim": 5,
+    "epochs": 1800,
+    "num_batches": 100,
+    "gen_lr": 1e-4,
+    "disc_lr": 1e-4,
+    "val_interval": 10,
+    "eval_batch_size": 1000,
+    "eval_samples": 200,
+    "kernel_scales": 50,
+    "kernel_scale_min": 0.001,
+    "kernel_scale_max": 0.5,
+    "scatter": 1,
+    "kde_batch_size": 10,
+    "plot_pdf_index": "100"  
+}
+gen_spec = {
+    "other_dim": config["noise_dim"],#noise dimensions
+    "cond_dim": data_xdim,#conditioning data
+    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "output_dim": data_ydim,#fake data dimensions
+    "activation": F.relu
+}
+disc_spec = {
+    "other_dim": data_ydim,#actual data dimensions
+    "cond_dim": data_xdim,
+    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "cond_layers": [64,64],
+    "other_layers":[64,64],
+    "output_dim": 1,#output logit
+    "activation": F.relu
+}
+generator: noise_injection
+discriminator: feedforward
