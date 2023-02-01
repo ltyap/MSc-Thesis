@@ -88,30 +88,30 @@ def indexes(val, x):
             listofindexes.append(i)
     return listofindexes
 
-listofx = np.linspace(0,14700,50, dtype=int)
+# listofx = np.linspace(0,14700,50, dtype=int)
 
-IMG_PATH = './plots'
-DATASET_NAME = 'aero'
-PLT_TYPE = 'pdf_TwrBsMyt_test_raw'
+# IMG_PATH = './plots'
+# DATASET_NAME = 'aero'
+# PLT_TYPE = 'pdf_TwrBsMyt_test_raw'
 
-testpdf_imgs_path = os.path.join(IMG_PATH,DATASET_NAME,PLT_TYPE)
+# testpdf_imgs_path = os.path.join(IMG_PATH,DATASET_NAME,PLT_TYPE)
 
-if not os.path.exists(testpdf_imgs_path):
-    os.makedirs(testpdf_imgs_path)
-else:
-    for f in os.listdir(testpdf_imgs_path):
-        os.remove(os.path.join(testpdf_imgs_path,f))
+# if not os.path.exists(testpdf_imgs_path):
+#     os.makedirs(testpdf_imgs_path)
+# else:
+#     for f in os.listdir(testpdf_imgs_path):
+#         os.remove(os.path.join(testpdf_imgs_path,f))
     
-assert os.path.exists(testpdf_imgs_path),("dataset folder {} does not exist".format(testpdf_imgs_path))
+# assert os.path.exists(testpdf_imgs_path),("dataset folder {} does not exist".format(testpdf_imgs_path))
 
-for i, idx in enumerate(listofx):
-    tmp = indexes(test_data.x[idx], test_data.x)
-    plt.figure()
-    sns.kdeplot(test_data.y[tmp].squeeze(), color='k')
-    plt.title('x={}, idx = {}'.format(test_raw.x[idx], idx), fontsize=10)
+# for i, idx in enumerate(listofx):
+#     tmp = indexes(test_data.x[idx], test_data.x)
+#     plt.figure()
+#     sns.kdeplot(test_data.y[tmp].squeeze(), color='k')
+#     plt.title('x={}, idx = {}'.format(test_raw.x[idx], idx), fontsize=10)
     
-    plt.savefig('{}/idx_{}.png'.format(testpdf_imgs_path, idx))
-    plt.close()
+#     plt.savefig('{}/idx_{}.png'.format(testpdf_imgs_path, idx))
+#     plt.close()
 # In[9]:
 
 
@@ -236,12 +236,12 @@ class CGAN:
         val_ll = []
         train_ll = []
         epoch_ll = []
-
+        
+        
         PARAM_PATH = './param_best'
-        FILE_NAME = 'aero_pearson'
+        FILE_NAME = 'aero_standard_larger_epoch'
         if not os.path.exists(os.path.join(PARAM_PATH,FILE_NAME)):
             os.makedirs(os.path.join(PARAM_PATH,FILE_NAME))
-
         best_save_path = os.path.join(PARAM_PATH,FILE_NAME,
                             "epoch_best.pt") # Path to save best params to
 
@@ -312,18 +312,17 @@ class CGAN:
         self.epoch_disc_loss = epoch_disc_loss
         self.epoch_gen_loss = epoch_gen_loss
         self.epoch_fooling = epoch_fooling
-        
+
         IMG_PATH = './plots'
         if not os.path.exists(os.path.join(IMG_PATH,FILE_NAME)):
             os.makedirs(os.path.join(IMG_PATH,FILE_NAME))
-        
+
         plt.figure()
         plt.plot(self.epoch_ll,self.val_ll, label = "val ll")
         plt.plot(self.epoch_ll,self.train_ll, label = "train ll")
         plt.title("history")
         plt.legend()
-
-        images_save_path = os.path.join(IMG_PATH,FILE_NAME,"history_aero_pearson.png")
+        images_save_path = os.path.join(IMG_PATH,FILE_NAME,"history_aero_standard_larger_epoch.png")
         plt.savefig(images_save_path)
 
         plt.figure()
@@ -331,18 +330,16 @@ class CGAN:
         plt.plot(self.generator_loss, label = "gen_loss")
         plt.title('generator/discriminator loss')
         plt.legend() 
-
         images_save_path = os.path.join(IMG_PATH,FILE_NAME,"losses.png")
         plt.savefig(images_save_path)
-
 
         plt.figure()
         plt.plot(self.fooling, label='fooling')
         plt.legend()
-        plt.title('Fooling')
+        plt.title('Fooling')       
         images_save_path = os.path.join(IMG_PATH,FILE_NAME,"fooling.png")
         plt.savefig(images_save_path)
-
+        
         print("best ll:%g",best_ll)
         print("best mae:%g",best_mae)
         print("best epoch:%g",best_epoch_i)
@@ -552,7 +549,7 @@ def get_samples(model,input,num_samples=1000):
 #create nn spec for discriminator and generator
 config = {
     "noise_dim": 10,
-    "epochs": 1000,
+    "epochs": 4000,
     "num_batches": 200,
     "gen_lr": 1e-4,
     "disc_lr": 1e-4,
@@ -584,8 +581,8 @@ nn_spec = {'gen_spec' : {
     "type": DoubleInputNetwork
 }
 }
-cgan_model_Pearson = PearsonCGAN(config, nn_spec)
-cgan_model_Pearson.train(train_data,val_func)
+cgan_model = CGAN(config, nn_spec)
+cgan_model.train(train_data,val_func)
 
 
 # In[184]:
@@ -602,7 +599,7 @@ x_values = x_values[sort]
 
 IMG_PATH = './plots'
 DATASET_NAME = 'aero'
-PLT_TYPE = 'pdf_TwrBsMyt_samples_pearson'
+PLT_TYPE = 'pdf_TwrBsMyt_samples_standard_larger_epoch'
 
 samplepdf_imgs_path = os.path.join(IMG_PATH,DATASET_NAME,PLT_TYPE)
 
@@ -618,7 +615,7 @@ gen_samples = np.zeros((num_samples,len(x_values_scale)))
 real_samples = np.zeros((num_samples,len(x_values_scale)))
 
 for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
-    gen_samples[:,i] = get_samples(cgan_model_Pearson, values_scaled, num_samples).squeeze(1)
+    gen_samples[:,i] = get_samples(cgan_model, values_scaled, num_samples).squeeze(1)
     plt.figure()
     sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
     tmp = indexes(test_data.x[idx], test_data.x)

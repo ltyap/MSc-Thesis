@@ -90,28 +90,28 @@ def indexes(val, x):
 
 listofx = np.linspace(0,14700,50, dtype=int)
 
-IMG_PATH = './plots'
-DATASET_NAME = 'aero'
-PLT_TYPE = 'pdf_TwrBsMyt_test_raw'
+# IMG_PATH = './plots'
+# DATASET_NAME = 'aero'
+# PLT_TYPE = 'pdf_TwrBsMyt_test_raw'
 
-testpdf_imgs_path = os.path.join(IMG_PATH,DATASET_NAME,PLT_TYPE)
+# testpdf_imgs_path = os.path.join(IMG_PATH,DATASET_NAME,PLT_TYPE)
 
-if not os.path.exists(testpdf_imgs_path):
-    os.makedirs(testpdf_imgs_path)
-else:
-    for f in os.listdir(testpdf_imgs_path):
-        os.remove(os.path.join(testpdf_imgs_path,f))
+# if not os.path.exists(testpdf_imgs_path):
+#     os.makedirs(testpdf_imgs_path)
+# else:
+#     for f in os.listdir(testpdf_imgs_path):
+#         os.remove(os.path.join(testpdf_imgs_path,f))
     
-assert os.path.exists(testpdf_imgs_path),("dataset folder {} does not exist".format(testpdf_imgs_path))
+# assert os.path.exists(testpdf_imgs_path),("dataset folder {} does not exist".format(testpdf_imgs_path))
 
-for i, idx in enumerate(listofx):
-    tmp = indexes(test_data.x[idx], test_data.x)
-    plt.figure()
-    sns.kdeplot(test_data.y[tmp].squeeze(), color='k')
-    plt.title('x={}, idx = {}'.format(test_raw.x[idx], idx), fontsize=10)
+# for i, idx in enumerate(listofx):
+#     tmp = indexes(test_data.x[idx], test_data.x)
+#     plt.figure()
+#     sns.kdeplot(test_data.y[tmp].squeeze(), color='k')
+#     plt.title('x={}, idx = {}'.format(test_raw.x[idx], idx), fontsize=10)
     
-    plt.savefig('{}/idx_{}.png'.format(testpdf_imgs_path, idx))
-    plt.close()
+#     plt.savefig('{}/idx_{}.png'.format(testpdf_imgs_path, idx))
+#     plt.close()
 # In[9]:
 
 
@@ -238,7 +238,7 @@ class CGAN:
         epoch_ll = []
 
         PARAM_PATH = './param_best'
-        FILE_NAME = 'aero_pearson'
+        FILE_NAME = 'aero_pearson_large'
         if not os.path.exists(os.path.join(PARAM_PATH,FILE_NAME)):
             os.makedirs(os.path.join(PARAM_PATH,FILE_NAME))
 
@@ -312,17 +312,16 @@ class CGAN:
         self.epoch_disc_loss = epoch_disc_loss
         self.epoch_gen_loss = epoch_gen_loss
         self.epoch_fooling = epoch_fooling
-        
+
         IMG_PATH = './plots'
         if not os.path.exists(os.path.join(IMG_PATH,FILE_NAME)):
             os.makedirs(os.path.join(IMG_PATH,FILE_NAME))
-        
+
         plt.figure()
         plt.plot(self.epoch_ll,self.val_ll, label = "val ll")
         plt.plot(self.epoch_ll,self.train_ll, label = "train ll")
         plt.title("history")
         plt.legend()
-
         images_save_path = os.path.join(IMG_PATH,FILE_NAME,"history_aero_pearson.png")
         plt.savefig(images_save_path)
 
@@ -331,15 +330,13 @@ class CGAN:
         plt.plot(self.generator_loss, label = "gen_loss")
         plt.title('generator/discriminator loss')
         plt.legend() 
-
         images_save_path = os.path.join(IMG_PATH,FILE_NAME,"losses.png")
         plt.savefig(images_save_path)
-
 
         plt.figure()
         plt.plot(self.fooling, label='fooling')
         plt.legend()
-        plt.title('Fooling')
+        plt.title('Fooling')       
         images_save_path = os.path.join(IMG_PATH,FILE_NAME,"fooling.png")
         plt.savefig(images_save_path)
 
@@ -568,7 +565,7 @@ config = {
 nn_spec = {'gen_spec' : {
     "other_dim": config["noise_dim"],#noise dimensions
     "cond_dim": data_xdim,#conditioning data
-    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "nodes_per_layer": [128, 128, 64, 64, 64, 64, 64, 64],
     "output_dim": data_ydim,#fake data dimensions
     "activation": F.relu,
     "type": NoiseInjection
@@ -576,7 +573,7 @@ nn_spec = {'gen_spec' : {
 'disc_spec': {
     "other_dim": data_ydim,#actual data dimensions
     "cond_dim": data_xdim,
-    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "nodes_per_layer": [128, 128, 64, 64, 64, 64],
     "cond_layers": [64,64],
     "other_layers":[64,64],
     "output_dim": 1,#output logit
@@ -602,7 +599,7 @@ x_values = x_values[sort]
 
 IMG_PATH = './plots'
 DATASET_NAME = 'aero'
-PLT_TYPE = 'pdf_TwrBsMyt_samples_pearson'
+PLT_TYPE = 'pdf_TwrBsMyt_samples_pearson_large'
 
 samplepdf_imgs_path = os.path.join(IMG_PATH,DATASET_NAME,PLT_TYPE)
 
