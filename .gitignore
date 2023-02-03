@@ -1,6 +1,5 @@
 __pycache__/
-images/
-epoch_best.pt
-epoch_best_GAN.pt
-datasets/aero/testpdf_imgs
-datasets/aero/sample_pdf_imgs
+param_best
+plots/
+plots_server/
+others/
