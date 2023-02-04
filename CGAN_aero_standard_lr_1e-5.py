@@ -31,7 +31,7 @@ PLT_DATASET_NAME = 'aero_TwrBsMyt_ST_DEL'
 
 # path for saving parameters of model
 PARAM_PATH = './param_best'
-FILE_NAME = 'aero_standard'
+FILE_NAME = 'aero_standard_lr_1e-5'
 
 #CHANGE DIMENSIONS OF DATA ACCORDINGLY
 X_DIM = 3
@@ -473,8 +473,8 @@ config = {
     "noise_dim": 10,
     "epochs": 1000,
     "batch_size": 200,
-    "gen_lr": 1e-4,
-    "disc_lr": 1e-4,
+    "gen_lr": 1e-5,
+    "disc_lr": 1e-5,
     "val_interval": 20,
     "eval_batch_size": 1000,
     "eval_samples": 200,

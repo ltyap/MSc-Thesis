@@ -31,7 +31,7 @@ PLT_DATASET_NAME = 'aero_TwrBsMyt_ST_DEL'
 
 # path for saving parameters of model
 PARAM_PATH = './param_best'
-FILE_NAME = 'aero_standard'
+FILE_NAME = 'aero_pearson_large_epoch_3000'
 
 #CHANGE DIMENSIONS OF DATA ACCORDINGLY
 X_DIM = 3
@@ -471,7 +471,7 @@ def plot_samples(sample_sets, file_name, labels=None, range_dataset=None,
 #create nn spec for discriminator and generator
 config = {
     "noise_dim": 10,
-    "epochs": 1000,
+    "epochs": 3000,
     "batch_size": 200,
     "gen_lr": 1e-4,
     "disc_lr": 1e-4,
@@ -487,7 +487,7 @@ config = {
 nn_spec = {'gen_spec' : {
     "other_dim": config["noise_dim"],#noise dimensions
     "cond_dim": X_DIM,#conditioning data
-    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "nodes_per_layer": [128, 128, 64, 64, 64, 64, 64, 64],
     "output_dim": Y_DIM,#fake data dimensions
     "activation": F.relu,
     "type": NoiseInjection
@@ -495,7 +495,7 @@ nn_spec = {'gen_spec' : {
 'disc_spec': {
     "other_dim": Y_DIM,#actual data dimensions
     "cond_dim": X_DIM,
-    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "nodes_per_layer": [128, 128, 64, 64, 64, 64],
     "cond_layers": [64,64],
     "other_layers":[64,64],
     "output_dim": 1,#output logit
@@ -503,8 +503,8 @@ nn_spec = {'gen_spec' : {
     "type": DoubleInputNetwork
 }
 }
-cgan_model = CGAN(config, nn_spec)
-cgan_model.train(train_data,val_func)
+cgan_model_Pearson = PearsonCGAN(config, nn_spec)
+cgan_model_Pearson.train(train_data,val_func)
 
 # import raw data
 df_test = pd.read_csv("datasets/aero/raw_data/test/data_raw.dat", header = 0, index_col = 0)
@@ -534,7 +534,7 @@ real_samples = np.zeros((num_samples_real,len(x_values_scale)))
 
 print('Plotting samples for all x-locations...')
 for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
-    gen_samples[:,i] = get_samples(cgan_model, values_scaled, num_samples_gen).squeeze(1)
+    gen_samples[:,i] = get_samples(cgan_model_Pearson, values_scaled, num_samples_gen).squeeze(1)
     plt.figure()
     sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
     tmp = indexes(test_data.x[idx], test_data.x)

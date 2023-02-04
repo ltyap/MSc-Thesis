@@ -165,7 +165,7 @@ class CGAN:
     def train(self, train_data, val_func):
         train_tab = TabularDataset(train_data)
         train_loader = torch.utils.data.DataLoader(train_tab,
-                                                    batch_size = self.config["num_batches"],
+                                                    batch_size = self.config["batch_size"],
                                                     shuffle = True,
                                                     num_workers = 4)
         self.gen.train()
@@ -472,7 +472,7 @@ def plot_samples(sample_sets, file_name, labels=None, range_dataset=None,
 config = {
     "noise_dim": 10,
     "epochs": 1000,
-    "num_batches": 200,
+    "batch_size": 200,
     "gen_lr": 1e-4,
     "disc_lr": 1e-4,
     "val_interval": 20,

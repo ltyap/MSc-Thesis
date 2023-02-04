@@ -31,7 +31,7 @@ PLT_DATASET_NAME = 'aero_TwrBsMyt_ST_DEL'
 
 # path for saving parameters of model
 PARAM_PATH = './param_best'
-FILE_NAME = 'aero_standard'
+FILE_NAME = 'aero_pearson_batch_size_500'
 
 #CHANGE DIMENSIONS OF DATA ACCORDINGLY
 X_DIM = 3
@@ -472,7 +472,7 @@ def plot_samples(sample_sets, file_name, labels=None, range_dataset=None,
 config = {
     "noise_dim": 10,
     "epochs": 1000,
-    "batch_size": 200,
+    "batch_size": 500,
     "gen_lr": 1e-4,
     "disc_lr": 1e-4,
     "val_interval": 20,
@@ -503,8 +503,8 @@ nn_spec = {'gen_spec' : {
     "type": DoubleInputNetwork
 }
 }
-cgan_model = CGAN(config, nn_spec)
-cgan_model.train(train_data,val_func)
+cgan_model_Pearson = PearsonCGAN(config, nn_spec)
+cgan_model_Pearson.train(train_data,val_func)
 
 # import raw data
 df_test = pd.read_csv("datasets/aero/raw_data/test/data_raw.dat", header = 0, index_col = 0)
@@ -534,7 +534,7 @@ real_samples = np.zeros((num_samples_real,len(x_values_scale)))
 
 print('Plotting samples for all x-locations...')
 for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
-    gen_samples[:,i] = get_samples(cgan_model, values_scaled, num_samples_gen).squeeze(1)
+    gen_samples[:,i] = get_samples(cgan_model_Pearson, values_scaled, num_samples_gen).squeeze(1)
     plt.figure()
     sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
     tmp = indexes(test_data.x[idx], test_data.x)
