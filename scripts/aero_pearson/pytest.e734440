@@ -1,0 +1,3 @@
+parallel: SIGTERM received. No new jobs will be started.
+parallel: Waiting for these 1 jobs to finish. Send SIGTERM again to stop now.
+parallel: python3 CGAN_aero_pearson.py > out_pearson.txt 

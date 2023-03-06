@@ -1,6 +1,5 @@
 import torch
 
-
 # Get list of indexes associated with same data
 def indexes(val, x):
     listofindexes = []

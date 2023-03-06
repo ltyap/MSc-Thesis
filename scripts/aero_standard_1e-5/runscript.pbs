@@ -1,0 +1,49 @@
+#!/bin/bash
+#PBS -N aero_standard_1e-5  #--->> name you can give your simulation to locate in the queue later
+#PBS -l nodes=1:ppn=1,walltime=01:00:00       #--->> specify the runtime in hh:mm:ss the lower the hours requested, the better chances that your run starts earlier
+#PBS -A pythonsem
+#PBS -q fpt-small
+#PBS -M litoongyap@tudelft.nl #---->> specify your email id
+
+ 
+
+### Script for running multiple sequential Python scripts with GNU parallel (R. Dwight 2021-11)
+### CHECK: Before each submission check the lines marked "(CHECK)"
+
+ 
+
+# Dump starting environment data (will not be same as on master)
+uname -n        # Name of node
+export         # All envvars
+pwd        # Working directory on start (should be ~)
+which python    # Which Python is implied
+
+ 
+
+# Setup environment
+source /home/litoongyap/cgan/venv39/bin/activate
+which python                # Which Python is implied given new PATH
+cd /home/litoongyap/cgan    # Directory must exist (CHECK)     ----------->>> go to the directory where the script is
+cores=1                     # Must correspond to ppn in header (CHECK)
+jobs=1                     # Number of python jobs in total
+
+ 
+
+# Run code (using GNU parallel sem):
+echo Starting $jobs Python jobs at: $(date) using $cores cores    
+
+ 
+
+# Assumes scripts "script_0001.py" to "script_$jobs.py" exist in "run0000" (CHECK) 
+# for i in `seq --format='%01g' $jobs`; do
+for i in 1; do
+        sem -j $cores "echo job $i starting; python3 CGAN_aero_standard_1e-5.py > out_standard_1e-5.txt; echo job $i finished"; echo sem $i exited
+        done 
+
+# Wait until all the jobs are finished before existing script
+sem --wait; echo sem --wait done
+
+ 
+
+# End
+echo "Ending Python jobs at: " $(date)
