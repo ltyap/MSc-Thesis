@@ -6,4 +6,4 @@ old/
 runscript.pbs.orig
 torch/
 postprocess/
-aero_MDN_13500/
+aero_MDN_*/
