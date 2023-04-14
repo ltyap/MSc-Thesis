@@ -87,6 +87,7 @@ class AeroSet(Dataset):
         idx = idx[tmp]
         x = x[tmp]
         counts = counts[tmp]
+        
         start_idx = idx
         end_idx = idx+counts
         for _, (start, end) in enumerate(zip(start_idx,end_idx)):

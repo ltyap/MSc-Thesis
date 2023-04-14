@@ -23,7 +23,7 @@ class AeroHydroSet(Dataset):
         
         self.inputs = ['URef','PLExp','IECturbc',"WaveHs","WaveTp","WaveDir"]
 
-        self.channel_name = 'YawBrMyn_[kN-m] ST_DEL'
+        self.channel_name = 'TwrBsMyt_[kN-m] ST_DEL'
         self.tmp = {
             "TwrBsMyt_[kN-m] max": "TwrBsMyt_max",
             'TwrBsMyt_[kN-m] stddev': "TwrBsMyt_stddev",

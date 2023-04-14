@@ -58,6 +58,8 @@ class FeedForward(nn.Module):
         self.activation_final = nn_spec['activation_final'] if nn_spec['activation_final'] else None
         self.dropout = nn_spec['dropout']
         self.spectral_norm = nn_spec['spectral_normalisation']
+        self.bn = nn_spec['batch_norm']
+
 
         self.layers, self.last_layer_dim = ffsection(
             self.cond_dim, self.other_dim, self.nodes_per_layer, spectral_normalisation=self.spectral_norm)
@@ -67,10 +69,12 @@ class FeedForward(nn.Module):
             self.output_layer = nn.Linear(self.last_layer_dim,self.output_dim)
 
     def forward(self, x):
-        for layer in self.layers:
+        for i, layer in enumerate(self.layers):
             x = self.activation(layer(x))
             if self.dropout!=None:
                 x = self.dropout(x)
+            if self.bn == True:
+                x = nn.BatchNorm1d(num_features=self.nodes_per_layer[i])(x)
         if self.activation_final:
             return self.activation_final(self.output_layer(x))
         return self.output_layer(x)#no activation fnc before output
@@ -81,11 +85,12 @@ class DoubleInputNetwork(nn.Module):
         self.activation = nn_spec["activation"]
         self.dim_x = nn_spec["cond_dim"]
         self.spectral_norm = nn_spec['spectral_normalisation']
+        self.dropout = nn_spec['dropout']
 
         self.cond_layers, cond_dim = ffsection(nn_spec["cond_dim"], other_dim= 0,
-                                               layer_list= nn_spec["cond_layers"], spectral_normalisation=self.spectral_norm)
+                                               layer_list= nn_spec["cond_layers"])
         self.other_layers, other_dim = ffsection(x_dim = 0,other_dim = nn_spec["other_dim"],
-                                                 layer_list=nn_spec["other_layers"], spectral_normalisation=self.spectral_norm)
+                                                 layer_list=nn_spec["other_layers"])
         self.hidden_layers, hidden_dim = ffsection(cond_dim, other_dim,
                                                     nn_spec["nodes_per_layer"], spectral_normalisation=self.spectral_norm)
         if self.spectral_norm != None:
@@ -108,6 +113,44 @@ class DoubleInputNetwork(nn.Module):
         hidden_input = torch.cat((cond_repr, other_repr), dim = 1)
         for layer in self.hidden_layers:
             hidden_input = self.activation(layer(hidden_input))
-
+            if self.dropout!=None:
+                hidden_input = self.dropout(hidden_input)
         output = self.output_layer(hidden_input)
+        return output
+class TestGenerator(nn.Module):
+    def __init__(self, nn_spec) -> None:
+        super().__init__()
+        self.other_dim = nn_spec["other_dim"]
+        self.cond_dim = nn_spec["cond_dim"]
+        self.model = nn.Sequential(
+            nn.Linear(self.other_dim+self.cond_dim, 50),
+            nn.BatchNorm1d(num_features = 50),
+            nn.LeakyReLU(inplace=True),
+            nn.Linear(50, 30),
+            nn.BatchNorm1d(num_features = 30),
+            nn.LeakyReLU(inplace=True),
+            nn.Linear(30,30),
+            nn.Linear(30,1),
+        )
+    def forward(self, x):
+        output = self.model(x)
+        return output
+class TestDiscriminator(nn.Module):
+    def __init__(self, nn_spec) -> None:
+        super().__init__()
+        self.other_dim = nn_spec["other_dim"]
+        self.cond_dim = nn_spec["cond_dim"]
+
+        self.model = nn.Sequential(
+            nn.Linear(self.other_dim+self.cond_dim, 5),
+            nn.LayerNorm(5),
+            nn.LeakyReLU(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(5, 15),
+            nn.LayerNorm(15),
+            nn.LeakyReLU(inplace=True),
+            nn.Linear(15,1),
+        )
+    def forward(self, x):
+        output = self.model(x)
         return output

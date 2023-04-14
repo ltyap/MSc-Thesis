@@ -8,24 +8,33 @@ import math
 import numpy as np
 import ot
 
-def evaluate_model(model, data, data_train, data_test=None, epoch=None, make_plots = True):
+def evaluate_model(model, data, data_train, data_test=None, data_train_repeated = None,epoch=None, make_plots = True):
     """
     data: validation data
     """
-    testing = (epoch==None) #returns False/0 if epoch is not None
+    testing = (epoch==None) #returns False if epoch is not None
     config = model.config
     evaluation_vals = model.eval(data, kde_eval, use_best_kernel_scale=testing)
-    # Calculate Wasserstein-2 dist w.r.t. validation data
-    w2_dist = wasserstein_from_samples(model, data)
+    # Calculate Wasserstein-2 dist w.r.t. test data
+    w1_dist,w2_dist = wasserstein_from_samples(model, data_test)
+    evaluation_vals['Wasserstein-1 dist'] = w1_dist
     evaluation_vals['Wasserstein-2 dist'] = w2_dist
+
     val_method = "true"
     metric_string = "\t".join(["{}: {:.5}".format(key, validation_val) for
         (key,validation_val) in evaluation_vals.items()])
     print("Epoch {}, {}\t{}".format(epoch, val_method, metric_string))
 
-    tmp = data.x.shape[0]
-    data_train_partial = LabelledData(x=data_train.x[:tmp], y=data_train.y[:tmp])
-    evaluation_vals_train = model.eval(data_train_partial, kde_eval, use_best_kernel_scale = testing)
+    # tmp = data.x.shape[0]
+    # data_train_partial = LabelledData(x=data_train.x[:tmp], y=data_train.y[:tmp])
+    # evaluation_vals_train = model.eval(data_train_partial, kde_eval, use_best_kernel_scale = testing)
+    evaluation_vals_train = model.eval(data_train, kde_eval, use_best_kernel_scale = testing)
+    if data_train_repeated != None:
+        w1_dist_train ,w2_dist_train = wasserstein_from_samples(model, data_train_repeated)
+        evaluation_vals_train['Wasserstein-1 dist train'] = w1_dist_train
+        evaluation_vals_train['Wasserstein-2 dist train'] = w2_dist_train
+
+
     metric_string = "\t".join(["{}: {:.5}".format(key, training_val) for
         (key,training_val) in evaluation_vals_train.items()])
     # print("Training Epoch {}, {}\t{}".format(epoch, val_method, metric_string))
@@ -75,15 +84,36 @@ def mae_from_samples(samples, y):
 
 
 def wasserstein_from_samples(model, data):
-    # Calculate average Wasserstein-2 distance between
-    # generated samples and real samples from validation set
-    x = data.x.to(model.device)
+    # Calculate average Wasserstein-1 distance between
+    # generated samples and real samples from test set
     y = data.y.detach().numpy()
-    samples = model.sample(x, batch_size=model.config["eval_batch_size"])
-    M_wasserstein = ot.wasserstein_1d(samples.cpu().detach().numpy(), y, p = 2)**0.5
-    y_std = np.std(y, axis=0)
-    M_wasserstein_normalised = M_wasserstein/y_std
-    return M_wasserstein_normalised.mean()
+
+    x_unique, idx, counts = np.unique(data.x, return_counts = True, return_index = True, axis = 0)
+    tmp = np.argsort(idx)
+    idx = idx[tmp]
+    x_unique = x_unique[tmp]
+    counts = counts[tmp]
+    start_idx = idx
+    end_idx = idx+counts
+
+    tmp = []
+    tmp2 = []
+    for i, (start, end) in enumerate(zip(start_idx,end_idx)):
+        y_real = y[start:end] # conditional y
+        x_unique_repeated = torch.Tensor(x_unique[i,:]).repeat(1000, 1)
+        samples = model.sample(x_unique_repeated, batch_size=len(x_unique_repeated))
+        M_wasserstein1 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real, p = 1)
+        M_wasserstein2 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real, p = 2)**0.5
+        y_real_mean = np.mean(y_real, axis=0)
+        y_real_std = np.std(y_real, axis=0)
+        M_wasserstein1_normalised = np.abs(M_wasserstein1/y_real_mean)
+        M_wasserstein2_normalised = np.abs(M_wasserstein2/y_real_std)
+        tmp.append(M_wasserstein1_normalised)
+        tmp2.append(M_wasserstein2_normalised)
+    
+    Wasserstein1_dist = np.array(tmp)
+    Wasserstein2_dist = np.array(tmp2)
+    return Wasserstein1_dist.mean(), Wasserstein2_dist.mean()
 
 def kde_eval(model, data, kernel_scale=None):
     x = data.x.to(model.device)
@@ -124,7 +154,6 @@ def kde_eval(model, data, kernel_scale=None):
 
     best_ll = joined_scale_lls[argmax].item()
     best_mae = mae_from_samples(samples, y)
-    # wasserstein_dist = wasserstein_from_samples(samples_wasserstein,y)
     evaluation_vals = {
         "ll": best_ll,
         "mae": best_mae,
@@ -141,7 +170,7 @@ def plot_samples(sample_sets, file_name, path_name, labels=None, range_dataset=N
     x_range = (min(range_dataset.x), max(range_dataset.x))
     y_range = (min(range_dataset.y), max(range_dataset.y))
     for set_i, (samples, ax) in enumerate(zip(sample_sets, axes[0])):
-        ax.scatter(samples.x, samples.y, s=3, color="green")
+        ax.scatter(samples.x, samples.y, s=4, color="black")
 
         ax.set_xlim(*x_range)
         ax.set_ylim(*y_range)

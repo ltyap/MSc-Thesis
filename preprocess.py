@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 import dataset_list 
 
 name = 'aerohydro'
-
+print(name)
 
 dataset = dataset_list.get_dataset_spec(name)()
 train_set, test_set = dataset.load_data()
@@ -23,7 +23,7 @@ if not os.path.exists(dataset.dataset_save_path):
     os.makedirs(dataset.dataset_save_path)
 assert os.path.exists(dataset.dataset_save_path),("dataset folder {} does not exist".format(dataset.dataset_save_path))
 
-
+print(dataset.dataset_save_path)
 np.savetxt("{}/train.csv".format(dataset.dataset_save_path), train_split,delimiter=",")
 np.savetxt("{}/val.csv".format(dataset.dataset_save_path), val_split,delimiter=",")
 np.savetxt("{}/test.csv".format(dataset.dataset_save_path), test_set_scaled,delimiter=",")
