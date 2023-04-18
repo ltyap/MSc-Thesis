@@ -8,50 +8,56 @@ import math
 import numpy as np
 import ot
 
-def evaluate_model(model, data, data_train, data_test=None, data_train_repeated = None,epoch=None, make_plots = True):
+def evaluate_model(model, data_val, data_train, data_test=None, data_train_repeated = None,epoch=None, make_plots = True):
     """
-    data: validation data
+    data_val: validation dataset
+    data_train: training dataset
+    data_test: conditional data taken from validation dataset
+    data_train_repeated: conditional data taken from training dataset (only available for synthetic datasets)
     """
     testing = (epoch==None) #returns False if epoch is not None
     config = model.config
-    evaluation_vals = model.eval(data, kde_eval, use_best_kernel_scale=testing)
-    # Calculate Wasserstein-2 dist w.r.t. test data
-    w1_dist,w2_dist = wasserstein_from_samples(model, data_test)
+    evaluation_vals = model.eval(data_val, kde_eval, use_best_kernel_scale=testing)
+    # # Calculate Wasserstein-p dist w.r.t. test data
+    # Conditional Wasserstein dist
+    mean_cond_w1_dist, mean_cond_w2_dist, cond_w1_dist, cond_w2_dist = conditional_wasserstein(model, data_test)
+    # Actual Wasserstein dist
+    w1_dist, w2_dist = wasserstein_dist(model, data_val)
     evaluation_vals['Wasserstein-1 dist'] = w1_dist
-    evaluation_vals['Wasserstein-2 dist'] = w2_dist
-
+    evaluation_vals['Wasserstein-2 dist'] = w2_dist 
     val_method = "true"
     metric_string = "\t".join(["{}: {:.5}".format(key, validation_val) for
         (key,validation_val) in evaluation_vals.items()])
     print("Epoch {}, {}\t{}".format(epoch, val_method, metric_string))
 
-    # tmp = data.x.shape[0]
-    # data_train_partial = LabelledData(x=data_train.x[:tmp], y=data_train.y[:tmp])
-    # evaluation_vals_train = model.eval(data_train_partial, kde_eval, use_best_kernel_scale = testing)
+    evaluation_vals['mean cond Wasserstein-1 dist'] = mean_cond_w1_dist
+    evaluation_vals['mean cond Wasserstein-2 dist'] = mean_cond_w2_dist
+    evaluation_vals['cond Wasserstein-1 dist'] = cond_w1_dist
+    evaluation_vals['cond Wasserstein-2 dist'] = cond_w2_dist
+
     evaluation_vals_train = model.eval(data_train, kde_eval, use_best_kernel_scale = testing)
+    w1_dist_train, w2_dist_train = wasserstein_dist(model, data_train)
+    evaluation_vals_train['Wasserstein-1 dist'] = w1_dist_train
+    evaluation_vals_train['Wasserstein-2 dist'] = w2_dist_train
     if data_train_repeated != None:
-        w1_dist_train ,w2_dist_train = wasserstein_from_samples(model, data_train_repeated)
-        evaluation_vals_train['Wasserstein-1 dist train'] = w1_dist_train
-        evaluation_vals_train['Wasserstein-2 dist train'] = w2_dist_train
-
-
-    metric_string = "\t".join(["{}: {:.5}".format(key, training_val) for
-        (key,training_val) in evaluation_vals_train.items()])
-    # print("Training Epoch {}, {}\t{}".format(epoch, val_method, metric_string))
-
+        mean_cond_w1_dist_train , mean_cond_w2_dist_train, cond_w1_dist_train, cond_w2_dist_train = conditional_wasserstein(model, data_train_repeated)
+        evaluation_vals_train['mean cond Wasserstein-1 dist'] = mean_cond_w1_dist_train
+        evaluation_vals_train['mean cond Wasserstein-2 dist'] = mean_cond_w2_dist_train
+        evaluation_vals_train['cond Wasserstein-1 dist'] = cond_w1_dist_train
+        evaluation_vals_train['cond Wasserstein-2 dist'] = cond_w2_dist_train
     if make_plots:
         if config["scatter"]:
-            model_samples = model.sample(data.x, batch_size = config["eval_batch_size"])
+            model_samples = model.sample(data_val.x, batch_size = config["eval_batch_size"])
             if type(model_samples) == torch.Tensor:
                 model_samples = model_samples.to("cpu")
-            model_data = LabelledData(x=data.x, y = model_samples)
+            model_data = LabelledData(x=data_val.x, y = model_samples)
             plot_title = 'Training epoch {}'.format(epoch)
-            sample_sets = [data, model_data]
+            sample_sets = [data_val, model_data]
             labels = ["Ground Truth", "model"]
             plot_path = os.path.join(model.constants['plot_path'],model.constants['plt_dataset_name'], model.constants['file_name'])
  
             plot_samples(sample_sets, file_name = epoch, path_name = plot_path,
-                        labels = labels, title=plot_title, range_dataset=data)
+                        labels = labels, title=plot_title, range_dataset=data_val)
         if config["pdf_index"]:
             opt_value = config["pdf_index"]
             if opt_value:
@@ -81,11 +87,28 @@ def mae_from_samples(samples, y):
     medians,_ = torch.median(samples, dim=1)
     abs_errors = torch.sum(torch.abs(medians-y), dim = 1)
     return torch.mean(abs_errors).item()
+def wasserstein_dist(model, data):
+    """
+    Calculates W_p[P_d(y,x),P_g(y,x)] based on 1D samples
+    """
+    y_real = data.y.detach().numpy()
+    x = data.x
+    samples = model.sample(x, batch_size = len(x))
+    M_wasserstein1 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real, p = 1)
+    M_wasserstein2 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real, p = 2)**0.5
+    y_real_std = np.std(y_real, axis=0)
+    M_wasserstein1_normalised = np.abs(M_wasserstein1/y_real_std)
+    M_wasserstein2_normalised = np.abs(M_wasserstein2/y_real_std)
 
+    return M_wasserstein1_normalised[0], M_wasserstein2_normalised[0]
+def conditional_wasserstein(model, data):
+    """
+    Calculates E_x[W_p(Pd(Y|x), Pg(Y|x))] based on 1D samples
 
-def wasserstein_from_samples(model, data):
-    # Calculate average Wasserstein-1 distance between
-    # generated samples and real samples from test set
+    data: dataset containing n values sampled at every conditional input
+    i.e. for every x_i, i from 1 to m -> y_1 to y_n
+    length of data (assuming same n for each conditional input) = m*n    
+    """
     y = data.y.detach().numpy()
 
     x_unique, idx, counts = np.unique(data.x, return_counts = True, return_index = True, axis = 0)
@@ -99,21 +122,22 @@ def wasserstein_from_samples(model, data):
     tmp = []
     tmp2 = []
     for i, (start, end) in enumerate(zip(start_idx,end_idx)):
-        y_real = y[start:end] # conditional y
+        y_real = y[start:end] # real output for each conditional input value
         x_unique_repeated = torch.Tensor(x_unique[i,:]).repeat(1000, 1)
         samples = model.sample(x_unique_repeated, batch_size=len(x_unique_repeated))
+
         M_wasserstein1 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real, p = 1)
         M_wasserstein2 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real, p = 2)**0.5
-        y_real_mean = np.mean(y_real, axis=0)
         y_real_std = np.std(y_real, axis=0)
-        M_wasserstein1_normalised = np.abs(M_wasserstein1/y_real_mean)
+        M_wasserstein1_normalised = np.abs(M_wasserstein1/y_real_std)
         M_wasserstein2_normalised = np.abs(M_wasserstein2/y_real_std)
         tmp.append(M_wasserstein1_normalised)
         tmp2.append(M_wasserstein2_normalised)
     
+    # array of W_p distances for each conditional input
     Wasserstein1_dist = np.array(tmp)
     Wasserstein2_dist = np.array(tmp2)
-    return Wasserstein1_dist.mean(), Wasserstein2_dist.mean()
+    return np.mean(Wasserstein1_dist), np.mean(Wasserstein2_dist), Wasserstein1_dist, Wasserstein2_dist
 
 def kde_eval(model, data, kernel_scale=None):
     x = data.x.to(model.device)

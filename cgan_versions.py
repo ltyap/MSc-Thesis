@@ -15,8 +15,8 @@ class WCGAN(CGAN):
     def __init__(self, config, nn_spec, constants) -> None:
         self.gp = []
         self.discriminator_loss_val = []
-        self.discriminator_loss_no_gp = []
-        self.discriminator_loss_val_no_gp = []
+        self.estimated_w1_dist = []
+        self.estimated_w1_dist_val = []
         self.lambda_gp = config['lambda_gp']
         self.n_critic = config['n_critic']
         self.gradient_norm = []
@@ -68,8 +68,9 @@ class WCGAN(CGAN):
     def train(self, train_data, validation_data, test_data, val_func):
         start_time = time.time()
         train_tab = TabularDataset(train_data)
+        train_tab_stddev = torch.std(train_tab.ys)
         val_tab = TabularDataset(validation_data)
-        test_tab = TabularDataset(test_data)
+        val_tab_stddev = torch.std(val_tab.ys)
         train_loader = torch.utils.data.DataLoader(train_tab,
                                                     batch_size = self.config["batch_size"],
                                                     shuffle = True)
@@ -88,9 +89,6 @@ class WCGAN(CGAN):
 
         best_save_path = os.path.join(self.param_dir,
                             "epoch_best.pt") # Path to save best params to
-
-        one = torch.tensor(1, dtype = torch.float).to(self.device)
-        mone = (one * -1).to(self.device)
 
         # gen_opt = torch.optim.Adam(self.gen.parameters(),lr = self.config["gen_lr"],betas=(0.5,0.9))
         # disc_opt = torch.optim.Adam(self.critic.parameters(), lr = self.config["disc_lr"],betas=(0.5,0.9))
@@ -134,7 +132,7 @@ class WCGAN(CGAN):
                 mean_iteration_gradient_norm += gradient_norm.item() / self.n_critic
                 disc_loss = self.disc_loss(gen_logits, data_logits, gp)
                 disc_loss.backward(retain_graph=True)
-                disc_loss_no_gp = (disc_loss - gp)/gradient_norm
+                estimated_w1_dist = (disc_loss - gp)/(gradient_norm*torch.std(data_batch))
                 disc_opt.step()
             # --------------
             # Train generator
@@ -156,20 +154,23 @@ class WCGAN(CGAN):
                 self.val_ll.append(evaluation_vals["ll"])
                 self.train_ll.append(evaluation_vals_train["ll"])
                 self.epoch_ll.append(epoch+1)
-                self.wasserstein1_dist.append(evaluation_vals["Wasserstein-1 dist"])
-                self.wasserstein2_dist.append(evaluation_vals["Wasserstein-2 dist"])
-                if "Wasserstein-1 dist train" in evaluation_vals_train.keys():
-                    self.wasserstein1_dist_train.append(evaluation_vals_train["Wasserstein-1 dist train"])
-                    self.wasserstein2_dist_train.append(evaluation_vals_train["Wasserstein-2 dist train"])
-
+                self.w1_dist.append(evaluation_vals["Wasserstein-1 dist"])
+                self.w2_dist.append(evaluation_vals["Wasserstein-2 dist"])
+                self.w1_dist_train.append(evaluation_vals_train["Wasserstein-1 dist"])
+                self.w2_dist_train.append(evaluation_vals_train["Wasserstein-2 dist"])
+                if "mean cond Wasserstein-1 dist" in evaluation_vals_train.keys():
+                    self.mean_cond_w1_dist_train.append(evaluation_vals_train['mean cond Wasserstein-1 dist'])
+                    self.mean_cond_w2_dist_train.append(evaluation_vals_train['mean cond Wasserstein-2 dist'])
+                self.mean_cond_w1_dist.append(evaluation_vals['mean cond Wasserstein-1 dist'])
+                self.mean_cond_w2_dist.append(evaluation_vals['mean cond Wasserstein-2 dist'])
                 self.gradient_norm.append(mean_iteration_gradient_norm)
                 self.discriminator_loss.append(disc_loss.item())
-                self.discriminator_loss_no_gp.append(disc_loss_no_gp.item())
+                self.estimated_w1_dist.append(estimated_w1_dist.item())
                 self.gp.append(gp.item())
                 self.generator_loss.append(gen_loss.item())
                 self.epoch_loss.append(epoch)
 
-                # disc loss for validation data
+                # disc loss/estimated w1 dist for validation data
                 x_batch_val = (val_tab.xs).to(self.device)
                 data_batch_val = (val_tab.ys).to(self.device)
                 batch_size_val = len(data_batch_val)      
@@ -181,15 +182,13 @@ class WCGAN(CGAN):
                 gen_output_val = gen_output_val.detach()
                 gen_logits_val = self.critic(torch.cat((x_batch_val,gen_output_val), dim = 1))
                 gen_logits_val = gen_logits_val.mean()
-
                 data_logits_val = self.critic(torch.cat((x_batch_val,data_batch_val), dim = 1))
                 data_logits_val = data_logits_val.mean()
-
                 gp_val,gradient_norm_val = self.compute_gradient_penalty(x_batch_val, gen_output_val, data_batch_val.detach())
-
                 disc_loss_val = gen_logits_val-data_logits_val+gp_val
-                disc_loss_val_no_gp = (gen_logits_val-data_logits_val)/gradient_norm_val
-                self.discriminator_loss_val_no_gp.append(disc_loss_val_no_gp.item())
+
+                estimated_w1_dist_val = (disc_loss_val-gp_val)/(gradient_norm_val*val_tab_stddev)
+                self.estimated_w1_dist_val.append(estimated_w1_dist_val.item())
                 self.discriminator_loss_val.append(disc_loss_val.item())
                 self.gradient_norm_val.append(gradient_norm_val.item())
 
@@ -201,6 +200,11 @@ class WCGAN(CGAN):
                         "gen": self.gen.state_dict(),
                         "disc": self.critic.state_dict(),
                     }
+                    self.cond_w1_dist = evaluation_vals['cond Wasserstein-1 dist']
+                    self.cond_w2_dist = evaluation_vals["cond Wasserstein-2 dist"]
+                    if "cond Wasserstein-1 dist" in evaluation_vals_train.keys():
+                        self.cond_w1_dist_train = evaluation_vals_train['cond Wasserstein-1 dist']
+                        self.cond_w2_dist_train = evaluation_vals_train['cond Wasserstein-2 dist']
                     torch.save(model_params, best_save_path)
                     # print("saved model")
 
@@ -212,6 +216,7 @@ class WCGAN(CGAN):
         plt.plot(self.epoch_ll,self.val_ll, label = "val ll")
         plt.plot(self.epoch_ll,self.train_ll, label = "train ll")
         plt.title(title)
+        plt.xlabel('Epoch')
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
@@ -220,6 +225,7 @@ class WCGAN(CGAN):
         plt.figure()
         plt.plot(self.epoch_ll,self.generator_loss, label = "gen_loss")
         plt.title(title)
+        plt.xlabel('Epoch')
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
@@ -229,6 +235,7 @@ class WCGAN(CGAN):
         plt.plot(self.epoch_ll,-np.array(self.discriminator_loss), label = 'disc loss')
         plt.plot(self.epoch_ll,-np.array(self.discriminator_loss_val), label = 'validation disc loss')
         plt.title(title)
+        plt.xlabel('Epoch')
         plt.ylabel('Negative critic loss')
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
@@ -236,21 +243,21 @@ class WCGAN(CGAN):
 
         title = 'wasserstein 1 distance'
         plt.figure()
-        plt.plot(self.epoch_ll, self.wasserstein1_dist,label = 'Calculated (val)', color = 'b')
-        if self.wasserstein1_dist_train:
-            plt.plot(self.epoch_ll, self.wasserstein1_dist_train,label = 'Calculated (train)', color = 'r')
-        # plt.plot(self.epoch_ll, -np.array(self.discriminator_loss_no_gp), label='Estimated (train)', color = 'r', linestyle='--')
-        # plt.plot(self.epoch_ll, -np.array(self.discriminator_loss_val_no_gp), label='Estimated (val)', color = 'b', linestyle='--')
+        plt.plot(self.epoch_ll, self.w1_dist,label = 'Calculated (val)', color = 'b')
+        plt.plot(self.epoch_ll, self.w1_dist_train,label = 'Calculated (train)', color = 'r')
+        plt.plot(self.epoch_ll, -np.array(self.estimated_w1_dist), label='Estimated (train)', color = 'r', linestyle='--')
+        plt.plot(self.epoch_ll, -np.array(self.estimated_w1_dist_val), label='Estimated (val)', color = 'b', linestyle='--')
         plt.title(title)
+        plt.xlabel('Epoch')
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
 
         title = 'wasserstein 2 distance'
         plt.figure()
-        plt.plot(self.epoch_ll,self.wasserstein2_dist,label = 'Calculated (val)', color = 'b')
-        if self.wasserstein2_dist_train:
-            plt.plot(self.epoch_ll,self.wasserstein2_dist_train,label = 'Calculated (train)', color = 'r')
+        plt.plot(self.epoch_ll,self.w2_dist,label = 'Calculated (val)', color = 'b')
+        plt.plot(self.epoch_ll,self.w2_dist_train,label = 'Calculated (train)', color = 'r')
+        plt.xlabel('Epoch')
         plt.title(title)
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
@@ -259,7 +266,52 @@ class WCGAN(CGAN):
         title = 'gradient norm'
         plt.figure()
         plt.plot(self.epoch_ll,self.gradient_norm)
+        plt.xlabel('Epoch')
         plt.title(title)
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'mean conditional W1 distance'
+        plt.figure()
+        plt.plot(self.epoch_ll,self.mean_cond_w1_dist, label = 'test')
+        if all(self.mean_cond_w1_dist_train):
+            plt.plot(self.epoch_ll, self.mean_cond_w1_dist_train, label = 'train')
+        plt.title(title)
+        plt.xlabel('Epoch')
+        plt.legend()
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'mean conditional W2 distance'
+        plt.figure()
+        plt.plot(self.epoch_ll,self.mean_cond_w2_dist, label = 'test')
+        if all(self.mean_cond_w2_dist_train):
+            plt.plot(self.epoch_ll, self.mean_cond_w2_dist_train, label = 'train')
+        plt.title(title)
+        plt.xlabel('Epoch')
+        plt.legend()
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'conditional W1 distance'
+        plt.figure()
+        if all(self.cond_w1_dist_train):
+            plt.plot(self.cond_w1_dist_train, label = 'train')
+        plt.plot(self.cond_w1_dist, label = 'test')
+        plt.xlabel('Index')
+        plt.title(title)
+        plt.legend()
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'conditional W2 distance'
+        plt.figure()
+        if all(self.cond_w2_dist_train):
+            plt.plot(self.cond_w2_dist_train, label='train')
+        plt.plot(self.cond_w2_dist, label='test')
+        plt.xlabel('Index')
+        plt.title(title)
+        plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
 
@@ -271,91 +323,47 @@ class WCGAN(CGAN):
         if "gen" in checkpoint:
             self.gen.load_state_dict(checkpoint["gen"])
 
-        #W1 distances on conditional distributions based on saved model
-        _,gradient_norm_val = self.compute_gradient_penalty(x_batch_val, gen_output_val, data_batch_val.detach())
-        calc, estimate = self.wasserstein(test_data, gradient_norm_val)
-        title = 'W1 estimate'
-        plt.figure()
-        plt.plot(calc, label = 'calculated')
-        plt.plot(estimate, label = 'estimate')
-        plt.title(title)
-        plt.legend()
-        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
-        plt.savefig(images_save_path)
+        # #W1 distances on conditional distributions based on saved model
+        # _,gradient_norm_val = self.compute_gradient_penalty(x_batch_val, gen_output_val, data_batch_val.detach())
+        # calc, estimate = self.wasserstein(test_data, gradient_norm_val)
         
         self.logging()
         finish_time = time.time() - start_time
         print('Training Finished. Took {:.4f} seconds or {:.4f} hours to complete.'.format(finish_time, finish_time/3600))
-    def wasserstein(self, data, norm):
-        '''
-            returns W1 distance for each pdf location
-        '''
-        x = data.x.detach()
-        y = data.y.detach()
-        x_unique, idx, counts = np.unique(data.x, return_counts = True, return_index = True, axis = 0)
-        tmp = np.argsort(idx)
-        idx = idx[tmp]
-        x_unique = x_unique[tmp]
-        counts = counts[tmp]
-
-        start_idx = idx
-        end_idx = idx+counts
-
-        tmp = []
-        tmp2 = []
-        for i, (start, end) in enumerate(zip(start_idx,end_idx)):
-            x_real = x[start:end]
-            y_real = y[start:end]
-            x_unique_repeated = torch.Tensor(x_unique[i,:]).repeat(1000, 1)
-            samples = self.sample(x_unique_repeated, batch_size=len(x_unique_repeated))
-            
-            # calculated
-            M_wasserstein1 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real.numpy(), p = 1)
-            y_real_mean = np.mean(y_real.numpy(), axis=0)
-            M_wasserstein1_normalised = np.abs(M_wasserstein1/y_real_mean)
-            # if i == 49:
-            #     print('x',x_unique_repeated)
-            #     print(y_real)
-            #     print(y_real_mean)
-            #     print(M_wasserstein1_normalised)
-            # Estimated from loss function
-            fake = self.critic(torch.cat((x_unique_repeated, samples.detach()),dim = 1))
-            fake = fake.mean()
-            real = self.critic(torch.cat((x_real, y_real),dim = 1))
-            real = real.mean()
-            estimate = torch.abs((real - fake)/(norm.detach().numpy()*y_real_mean))
-            
-
-            tmp.append(M_wasserstein1_normalised)
-            tmp2.append(estimate.item())
-        Wasserstein1_dist = np.array(tmp)
-        Wasserstein1_dist_estimate = np.array(tmp2)
-
-        return Wasserstein1_dist, Wasserstein1_dist_estimate
+    
     def logging(self):
-        if self.wasserstein1_dist_train:
+        if self.mean_cond_w1_dist_train!=None:
             col = ['epoch','discriminator','generator',
                'Actual wasserstein-1 distance (Training)','Actual Wasserstein-1 distance (Validation)',
                 'Estimated wasserstein-1 distance (Training)','Estimated wasserstein-1 distance (Validation)',
-                'Actual Wasserstein-2 distance', "Actual wasserstein-2 distance (Training)"]
-            losses = pd.DataFrame(zip(self.epoch_ll,self.discriminator_loss,self.generator_loss,
-                                self.wasserstein1_dist_train, self.wasserstein1_dist,
-                                self.discriminator_loss_no_gp,self.discriminator_loss_val_no_gp,
-                                self.wasserstein2_dist, self.wasserstein2_dist_train),
+                'Actual Wasserstein-2 distance (Training)', "Actual wasserstein-2 distance"]
+            losses = pd.DataFrame(zip(self.epoch_ll, self.discriminator_loss, self.generator_loss,
+                                self.w1_dist_train, self.w1_dist,
+                                self.estimated_w1_dist, self.estimated_w1_dist_val,
+                                self.w2_dist_train, self.w2_dist),
                               columns=col)
+            cond_wdist = pd.DataFrame(zip(self.cond_w1_dist_train, self.cond_w1_dist,
+                                self.cond_w2_dist_train, self.cond_w2_dist),
+                                columns=["cond w1 dist (train)","cond w1 dist (test)",
+                                        "cond w2 dist (train)","cond w2 dist (test)"])
         else:
             col = ['epoch','discriminator','generator',
                 'Actual wasserstein-1 distance (Validation)',
                 'Estimated Wasserstein-1 distance (Training)','Estimated wasserstein-1 distance (Validation)',
                 'Actual Wasserstein-2 distance']
             losses = pd.DataFrame(zip(self.epoch_ll,self.discriminator_loss,self.generator_loss,
-                                    self.wasserstein1_dist,
-                                    self.discriminator_loss_no_gp,self.discriminator_loss_val_no_gp,
-                                    self.wasserstein2_dist),
+                                    self.w1_dist,
+                                    self.estimated_w1_dist, self.estimated_w1_dist_val,
+                                    self.w2_dist),
                                 columns=col)
+            cond_wdist = pd.DataFrame(zip(self.cond_w1_dist, self.cond_w2_dist),
+                                columns=["cond w1 dist (test)", "cond w2 dist (test)"])
+
         losses.to_csv('{}/nn_losses.csv'.format(self.plots_path))
-        losses = pd.DataFrame(zip(self.epoch_ll,self.train_ll, self.val_ll),columns=['epoch','train','validation'])
-        losses.to_csv('{}/ll_losses.csv'.format(self.plots_path))
+        cond_wdist.to_csv('{}/wdist.csv'.format(self.plots_path))
+
+        ll = pd.DataFrame(zip(self.epoch_ll,self.train_ll, self.val_ll),columns=['epoch','train','validation'])
+        ll.to_csv('{}/ll_losses.csv'.format(self.plots_path))
 
 class WdivCGAN(CGAN):
     def __init__(self, config, nn_spec, constants) -> None:

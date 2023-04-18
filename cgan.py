@@ -26,10 +26,23 @@ class CGAN:
         self.generator_loss = []
         self.epoch_loss = []
         self.fooling = []
-        self.wasserstein1_dist = []
-        self.wasserstein2_dist = []
-        self.wasserstein1_dist_train = []
-        self.wasserstein2_dist_train = []
+
+        self.w1_dist = []
+        self.w1_dist_train = []
+        self.w2_dist = []
+        self.w2_dist_train = []
+        
+        self.cond_w1_dist = []
+        self.cond_w2_dist = []
+        self.cond_w1_dist_train = []
+        self.cond_w2_dist_train = []
+
+        self.mean_cond_w1_dist = []
+        self.mean_cond_w2_dist = []
+        self.mean_cond_w1_dist_train = []
+        self.mean_cond_w2_dist_train = []
+
+
         self.gradient_norm_val = []
         self.constants = constants
         self.plots_path = os.path.join(constants['plot_path'],constants['plt_dataset_name'],constants['file_name'])
@@ -135,35 +148,31 @@ class CGAN:
                 epoch_gen_loss.append(gen_loss.item())
 
             if val_func and ((epoch+1) % self.config["val_interval"] == 0):
-                evaluation_vals, evaluation_vals_train = val_func(self, epoch)
-                
+                evaluation_vals, evaluation_vals_train = val_func(self, epoch)                
                 self.discriminator_loss.append(np.mean(epoch_disc_loss))
                 self.generator_loss.append(np.mean(epoch_gen_loss))
                 self.fooling.append(np.mean(epoch_fooling))
                 self.val_ll.append(evaluation_vals["ll"])
                 self.train_ll.append(evaluation_vals_train["ll"])
                 self.epoch_ll.append(epoch+1)
-                self.wasserstein1_dist.append(evaluation_vals["Wasserstein-1 dist"])
-                self.wasserstein2_dist.append(evaluation_vals["Wasserstein-2 dist"])
-                if "Wasserstein-1 dist train" in evaluation_vals_train.keys():
-                    self.wasserstein1_dist_train.append(evaluation_vals_train["Wasserstein-1 dist train"])
-                    self.wasserstein2_dist_train.append(evaluation_vals_train["Wasserstein-2 dist train"])
-                # disc loss for validation data
+                self.w1_dist.append(evaluation_vals["Wasserstein-1 dist"])
+                self.w2_dist.append(evaluation_vals["Wasserstein-2 dist"])
+                self.w1_dist_train.append(evaluation_vals_train["Wasserstein-1 dist"])
+                self.w2_dist_train.append(evaluation_vals_train["Wasserstein-2 dist"])
+                if "mean cond Wasserstein-1 dist" in evaluation_vals_train.keys():
+                    self.mean_cond_w1_dist_train.append(evaluation_vals_train['mean cond Wasserstein-1 dist'])
+                    self.mean_cond_w2_dist_train.append(evaluation_vals_train['mean cond Wasserstein-2 dist'])
+                self.mean_cond_w1_dist.append(evaluation_vals['mean cond Wasserstein-1 dist'])
+                self.mean_cond_w2_dist.append(evaluation_vals['mean cond Wasserstein-2 dist'])
+                # gradient of discriminator for validation data
                 x_batch_val = (val_tab.xs).to(self.device)
                 data_batch_val = (val_tab.ys).to(self.device)
-                batch_size_val = len(data_batch_val)      
-
+                batch_size_val = len(data_batch_val)
                 noise_batch_val = self.get_gaussian().sample([batch_size_val]).to(self.device)
                 gen_input_val = torch.cat((x_batch_val, noise_batch_val), dim = 1)
                 with torch.no_grad():
                     gen_output_val = self.gen(gen_input_val)
                 gen_output_val = gen_output_val.detach()
-                gen_logits_val = self.disc(torch.cat((x_batch_val,gen_output_val), dim = 1))
-                gen_logits_val = gen_logits_val.mean()
-
-                data_logits_val = self.disc(torch.cat((x_batch_val,data_batch_val), dim = 1))
-                data_logits_val = data_logits_val.mean()
-
                 gradient_norm_val = self.compute_gradient_penalty(x_batch_val, gen_output_val, data_batch_val.detach())
                 self.gradient_norm_val.append(gradient_norm_val.item())
                 if (best_epoch_i==None) or evaluation_vals["ll"] > best_ll:
@@ -174,11 +183,12 @@ class CGAN:
                         "gen": self.gen.state_dict(),
                         "disc": self.disc.state_dict(),
                     }
+                    self.cond_w1_dist = evaluation_vals['cond Wasserstein-1 dist']
+                    self.cond_w2_dist = evaluation_vals["cond Wasserstein-2 dist"]
+                    if "cond Wasserstein-1 dist" in evaluation_vals_train.keys():
+                        self.cond_w1_dist_train = evaluation_vals_train['cond Wasserstein-1 dist']
+                        self.cond_w2_dist_train = evaluation_vals_train['cond Wasserstein-2 dist']
                     torch.save(model_params, best_save_path)
-
-        # self.epoch_disc_loss = epoch_disc_loss
-        # self.epoch_gen_loss = epoch_gen_loss
-        # self.epoch_fooling = epoch_fooling
 
         if not os.path.exists(self.plots_path):
             os.makedirs(self.plots_path)
@@ -212,33 +222,75 @@ class CGAN:
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
 
-        title = 'wasserstein 1 distance'
+        title = 'gradient norm'
         plt.figure()
-        plt.plot(self.epoch_ll,self.wasserstein1_dist,label = 'Calculated')
-        if self.wasserstein1_dist_train:
-            plt.plot(self.epoch_ll, self.wasserstein1_dist_train,label = 'Calculated (train)', color = 'r')
+        plt.plot(self.epoch_ll,self.gradient_norm_val)
         plt.title(title)
         plt.xlabel('Epoch')
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'wasserstein 1 distance'
+        plt.figure()
+        plt.plot(self.epoch_ll, self.w1_dist, label = 'val')
+        plt.plot(self.epoch_ll, self.w1_dist_train, label = 'train')
+        plt.xlabel('Epoch')
+        plt.title(title)
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
 
         title = 'wasserstein 2 distance'
         plt.figure()
-        plt.plot(self.epoch_ll,self.wasserstein2_dist,label = 'Calculated')
-        if self.wasserstein2_dist_train:
-            plt.plot(self.epoch_ll, self.wasserstein2_dist_train,label = 'Calculated (train)', color = 'r')
+        plt.plot(self.epoch_ll, self.w2_dist, label = 'val')
+        plt.plot(self.epoch_ll, self.w2_dist_train, label = 'train')
         plt.title(title)
         plt.xlabel('Epoch')
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
 
-
-        title = 'gradient norm'
+        title = 'mean conditional W1 distance'
         plt.figure()
-        plt.plot(self.epoch_ll,self.gradient_norm_val)
+        plt.plot(self.epoch_ll,self.mean_cond_w1_dist, label = 'test')
+        if all(self.mean_cond_w1_dist_train):
+            plt.plot(self.epoch_ll, self.mean_cond_w1_dist_train, label='train')
         plt.title(title)
+        plt.legend()
+        plt.xlabel('Epoch')
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'mean conditional W2 distance'
+        plt.figure()
+        plt.plot(self.epoch_ll,self.mean_cond_w2_dist, label = 'test')
+        if all(self.mean_cond_w2_dist_train):
+            plt.plot(self.epoch_ll, self.mean_cond_w2_dist_train, label = 'train')
+        plt.title(title)
+        plt.legend()
+        plt.xlabel('Epoch')
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'conditional W1 distance'
+        plt.figure()
+        if all(self.cond_w1_dist_train):
+            plt.plot(self.cond_w1_dist_train, label = 'train')
+        plt.plot(self.cond_w1_dist, label = 'test')
+        plt.title(title)
+        plt.xlabel('Index')
+        plt.legend()
+        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
+        plt.savefig(images_save_path)
+
+        title = 'conditional W2 distance'
+        plt.figure()
+        if all(self.cond_w2_dist_train):
+            plt.plot(self.cond_w2_dist_train, label='train')
+        plt.plot(self.cond_w2_dist, label='test')
+        plt.xlabel('Index')
+        plt.title(title)
+        plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
 
@@ -249,59 +301,10 @@ class CGAN:
         self.disc.load_state_dict(checkpoint["disc"])
         if "gen" in checkpoint:
             self.gen.load_state_dict(checkpoint["gen"])
-
-        calc = self.wasserstein(test_data, gradient_norm_val)
-        title = 'W1 estimate'
-        plt.figure()
-        plt.plot(calc, label = 'calculated')
-        plt.title(title)
-        plt.legend()
-        images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
-        plt.savefig(images_save_path)
-
+        
         self.logging()
-
         finish_time = time.time() - start_time
         print('Training Finished. Took {:.4f} seconds or {:.4f} hours to complete.'.format(finish_time, finish_time/3600))
-    def wasserstein(self, data, norm):
-        '''
-            returns W1 distance for each pdf location
-        '''
-        x = data.x.detach()
-        y = data.y.detach()
-        x_unique, idx, counts = np.unique(data.x, return_counts = True, return_index = True, axis = 0)
-        tmp = np.argsort(idx)
-        idx = idx[tmp]
-        x_unique = x_unique[tmp]
-        counts = counts[tmp]
-
-        start_idx = idx
-        end_idx = idx+counts
-
-        tmp = []
-        tmp2 = []
-        for i, (start, end) in enumerate(zip(start_idx,end_idx)):
-            x_real = x[start:end]
-            y_real = y[start:end]
-            x_unique_repeated = torch.Tensor(x_unique[i,:]).repeat(1000, 1)
-            samples = self.sample(x_unique_repeated, batch_size=len(x_unique_repeated))
-            
-            # calculated
-            M_wasserstein1 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real.numpy(), p = 1)
-            y_real_mean = np.mean(y_real.numpy(), axis=0)
-            M_wasserstein1_normalised = np.abs(M_wasserstein1/y_real_mean)
-            # if i == 49:
-            #     print('x',x_unique_repeated)
-            #     print(y_real)
-            #     print(y_real_mean)
-            #     print(M_wasserstein1_normalised)
-            # Estimated from loss function
-           
-
-            tmp.append(M_wasserstein1_normalised)
-        Wasserstein1_dist = np.array(tmp)
-
-        return Wasserstein1_dist
  
     def gen_loss(self, gen_logits):
         return self.bce_logits(gen_logits, torch.ones_like(gen_logits))
@@ -350,21 +353,36 @@ class CGAN:
             samples = self.gen(gen_input)
         return samples
     def logging(self):
-        if self.wasserstein1_dist_train:
+        if self.mean_cond_w1_dist_train:
             col = ['discriminator','generator', 'fooling', 
                    'Actual wasserstein 1 distance (train)', 'Actual wasserstein 1 distance (val)',
-                    'Actual wasserstein 2 distance (train)','Actual wasserstein 2 distance (val)']
+                    'Actual wasserstein 2 distance (train)','Actual wasserstein 2 distance (val)',
+                    'mean conditional wasserstein 1 distance (train)','mean conditional wasserstein 1 distance (val)',
+                    'mean conditional wasserstein 2 distance (train)','mean conditional wasserstein 2 distance (val)']
             losses = pd.DataFrame(zip(self.discriminator_loss, self.generator_loss, self.fooling,
-                                    self.wasserstein1_dist_train, self.wasserstein1_dist,
-                                    self.wasserstein2_dist_train, self.wasserstein2_dist),
+                                    self.w1_dist_train, self.w1_dist,
+                                    self.w2_dist_train, self.w2_dist,
+                                    self.mean_cond_w1_dist_train, self.mean_cond_w1_dist,
+                                    self.mean_cond_w2_dist_train, self.mean_cond_w2_dist),
                                 columns=col)
+            cond_wdist = pd.DataFrame(zip(self.cond_w1_dist_train, self.cond_w1_dist,
+                                          self.cond_w2_dist_train, self.cond_w2_dist),
+                                          columns=["cond w1 dist (train)","cond w1 dist (test)",
+                                                   "cond w2 dist (train)","cond w2 dist (test)"])
         else:
             col = ['discriminator','generator', 'fooling', 
-                   'Actual wasserstein 1 distance (val)', 'Actual wasserstein 2 distance (val)']
+                   'Actual wasserstein 1 distance (val)', 'Actual wasserstein 2 distance (val)',
+                    'mean conditional wasserstein 1 distance (val)', 'mean conditional wasserstein 2 distance (val)']
             losses = pd.DataFrame(zip(self.discriminator_loss, self.generator_loss, self.fooling,
-                                    self.wasserstein1_dist, self.wasserstein2_dist),
+                                    self.w1_dist, self.w2_dist,
+                                    self.mean_cond_w1_dist, self.mean_cond_w2_dist),
                                 columns=col)
+            cond_wdist = pd.DataFrame(zip(self.cond_w1_dist, self.cond_w2_dist),
+                                columns=["cond w1 dist (test)", "cond w2 dist (test)"])
         losses.to_csv('{}/nn_losses.csv'.format(self.plots_path))
-        losses = pd.DataFrame(zip(self.epoch_ll,self.train_ll, self.val_ll),
+        cond_wdist.to_csv('{}/wdist.csv'.format(self.plots_path))
+        ll = pd.DataFrame(zip(self.epoch_ll,self.train_ll, self.val_ll),
                               columns=['epoch','train','validation'])
-        losses.to_csv('{}/ll_losses.csv'.format(self.plots_path))
+        ll.to_csv('{}/ll_losses.csv'.format(self.plots_path))
+
+
