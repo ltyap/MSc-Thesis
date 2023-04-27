@@ -8,7 +8,7 @@ import math
 import numpy as np
 import ot
 
-def evaluate_model(model, data_val, data_train, data_test=None, data_train_repeated = None,epoch=None, make_plots = True):
+def evaluate_model(model, data_val, data_train, data_test=None, data_train_repeated = None, epoch=None, make_plots = True):
     """
     data_val: validation dataset
     data_train: training dataset

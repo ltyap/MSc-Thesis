@@ -6,11 +6,13 @@ import os
 import matplotlib.pyplot as plt
 from misc_funcs import indexes, get_samples
 import dataset_specifications.dataset as Dataset
+import dataset_list
 from networks import NoiseInjection, FeedForward, DoubleInputNetwork
 from cgan_versions import WCGAN
 import seaborn as sns
 import pandas as pd
 import evaluation as eval
+
 
 plt.rcParams.update({'font.size': 13})
 plt.rc("axes", labelsize=18)
@@ -18,17 +20,36 @@ plt.rc("axes", titlesize=21)
 plt.rc("legend", fontsize=18)
 
 #import data
-DATASET_PATH = './datasets/aero/'
-DATASET_NAME = 'TwrBsMyt_ST_DEL'
-CHANNEL_NAME = "TwrBsMyt_[kN-m] ST_DEL"
+name = 'aero'
+DATASET_PATH = './datasets/{}'.format(name)
+assert os.path.exists(DATASET_PATH),("dataset folder {} does not exist".format(DATASET_PATH))
+
+print("Dataset path:", DATASET_PATH)
+dataset = dataset_list.get_dataset_spec(name)()
+
+"""
+['TwrBsMyt_[kN-m] max', 'TwrBsMyt_[kN-m] stddev',
+       'TwrBsMyt_[kN-m] ST_DEL', 
+       'RootMyb1_[kN-m] mean', 'RootMyb1_[kN-m] max', 'RootMyb1_[kN-m] stddev',
+       'RootMyb1_[kN-m] ST_DEL', 'RootMxb1_[kN-m] mean', 'RootMxb1_[kN-m] max',
+       'RootMxb1_[kN-m] stddev', 'RootMxb1_[kN-m] ST_DEL',
+     'YawBrMyn_[kN-m] mean', 'YawBrMyn_[kN-m] max',
+       'YawBrMyn_[kN-m] stddev', 'YawBrMyn_[kN-m] ST_DEL']
+"""
+
+list_of_channels = dataset.channels
+CHANNEL_NAME = "YawBrMyn_[kN-m] ST_DEL"
+# index = list(dataset.key).index(CHANNEL_NAME)
+print("Channel name:", CHANNEL_NAME)
+DATASET_NAME = dataset.key[CHANNEL_NAME]
 
 # For saving plots
 PLOT_PATH = './plots'
-PLT_DATASET_NAME = 'aero_{}'.format(DATASET_NAME)
+PLT_DATASET_NAME = 'aero/{}'.format(DATASET_NAME)
 
 # path for saving parameters of model
-PARAM_PATH = './param_best'
-FILE_NAME = 'aero_{}_WCGAN'.format(DATASET_NAME)
+PARAM_PATH = './param_best/aero/{}'.format(DATASET_NAME)
+FILE_NAME = 'wcgan_{}'.format('1')
 
 #CHANGE DIMENSIONS OF DATA ACCORDINGLY
 X_DIM = 3
@@ -46,17 +67,18 @@ constants = {
     "y_dim": Y_DIM
 }
 num_samples_real = 300
-dataset_dir = os.path.join(constants['dataset_path'],constants['dataset_name'])
+dataset_dir = constants['dataset_path']
 assert os.path.exists(dataset_dir),("dataset folder {} does not exist".format(dataset_dir))
 
 splits = {}
 scatter_plot = 0
-
 for split in ("train","test","val"):
     data_path = os.path.join(dataset_dir,"{}.csv".format(split))
     assert os.path.exists(data_path),"data file {} does not exist".format(data_path)
 
-    data = np.genfromtxt(data_path,delimiter=",")
+    data = pd.read_csv(data_path,delimiter=",")
+    data = data[dataset.inputs+[CHANNEL_NAME]].to_numpy()
+    # For 1D data only
     if scatter_plot:
         plt.figure
         plt.scatter(data[:,:1],data[:,1:], c='k')
@@ -65,49 +87,53 @@ for split in ("train","test","val"):
         plt.title(split)
         plt.show()
     torch_data = torch.tensor(data, device="cpu").float()
-    splits[split] = Dataset.LabelledData(x=torch_data[:,:X_DIM],y=torch_data[:,X_DIM:])
+    # if split == 'train':
+    #     tmp = np.random.choice(len(torch_data),6000, replace=False)
+    #     splits[split] = Dataset.LabelledData(x=torch_data[tmp,:X_DIM],y=torch_data[tmp,X_DIM:])
 
+    splits[split] = Dataset.LabelledData(x=torch_data[:,:X_DIM],y=torch_data[:,X_DIM:])
 train_data = splits["train"]
 val_data = splits['val']
 test_data = splits['test']
 
 def val_func(model, epoch):
-    return eval.evaluate_model(model, data = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
+    return eval.evaluate_model(model, data_val = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
 
 config = {
-    "noise_dim": 2,
-    "epochs": 40000,
+    "noise_dim": 30,
+    "epochs": 10000,
     "batch_size": 200,
     "gen_lr": 2e-4,
-    "disc_lr": 2e-4,
-    "val_interval": 50,
+    "disc_lr": 1e-4,
+    "val_interval": 20,
     "eval_batch_size": 1000,
     "eval_samples": 200,
     "kernel_scales": 50,
     "kernel_scale_min": 0.001,
-    "kernel_scale_max": 0.5,
-    "pdf_index":'100',
+    "kernel_scale_max": 0.7,
+    "pdf_index":"100",
     "scatter": 0,
     "kde_batch_size": 10,
-    "n_critic": 20,
-    "lambda_gp": 0.05,
-    'one-sided': False
+    "n_critic": 7,
+    "lambda_gp": 2e-2,
+    'one-sided': True
 }
 nn_spec = {'gen_spec' : {
     "other_dim": config["noise_dim"],#noise dimensions
     "cond_dim": X_DIM,#conditioning data
-    "nodes_per_layer": [16,16,16],
+    "nodes_per_layer": [128,128,128,128],
     "output_dim": Y_DIM,#fake data dimensions
     "activation": nn.ReLU(),
-    "type": NoiseInjection,
+    "type": FeedForward,
     "dropout":None,
     "activation_final": 0,
+    "batch_norm": None,
     "spectral_normalisation": None
 },
 'disc_spec': {
     "other_dim": Y_DIM,#actual data dimensions
     "cond_dim": X_DIM,    
-    "nodes_per_layer": [64,64,64,64],
+    "nodes_per_layer": [128,128,128,128],
     # "cond_layers": [64],
     # "other_layers":[64],
     "output_dim": 1,#output logit
@@ -115,23 +141,26 @@ nn_spec = {'gen_spec' : {
     "type": FeedForward,
     "dropout": None,
     "activation_final": 0,
+    "batch_norm": None,
     "spectral_normalisation": None
 }
 }
-print(config)
-print(nn_spec)
+
 savepath = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'learning_prog_idx{}'.format(config['pdf_index']))
 if not os.path.exists(savepath):
     os.makedirs(savepath)
 else:
     for f in os.listdir(savepath):
         os.remove(os.path.join(savepath,f))
-        
+print(config)
+print(nn_spec)
 wcgan_model = WCGAN(config, nn_spec, constants)
-wcgan_model.train(train_data, val_data, val_func)
+wcgan_model.train(train_data, val_data, test_data, val_func)
 
 # import raw data
-path = os.path.join(DATASET_PATH,'raw_data/test/data_raw.dat')
+path = 'datasets/{}/raw_data/test/data_raw.dat'.format(name)
+assert os.path.exists(path),("raw dataset folder {} does not exist".format(dataset_dir))
+
 df_test = pd.read_csv(path, header = 0, index_col = 0)
 aero_test_raw = df_test.loc[:, ["URef", "PLExp", "IECturbc", CHANNEL_NAME]]
 test_raw = Dataset.LabelledData(x= aero_test_raw.to_numpy()[:,:X_DIM],y = aero_test_raw.to_numpy()[:,X_DIM:])
@@ -152,7 +181,7 @@ else:
     for f in os.listdir(samplepdf_imgs_path):
         os.remove(os.path.join(samplepdf_imgs_path,f))
 
-assert os.path.exists(samplepdf_imgs_path),("dataset folder {} does not exist".format(samplepdf_imgs_path))
+assert os.path.exists(samplepdf_imgs_path),("results folder {} does not exist".format(samplepdf_imgs_path))
 
 gen_samples = np.zeros((num_samples_gen,len(x_values_scale)))
 real_samples = np.zeros((num_samples_real,len(x_values_scale)))
@@ -161,7 +190,7 @@ print('Plotting samples for all x-locations...')
 for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
     gen_samples[:,i] = get_samples(wcgan_model, values_scaled, num_samples_gen).squeeze(1)
     plt.figure()
-    sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
+    sns.kdeplot(gen_samples[:,i], color ='b',label='Gen', bw_adjust=0.75)
     tmp = indexes(test_data.x[idx], test_data.x)
     real_samples[:,i] = test_data.y[tmp].squeeze()
     sns.kdeplot(real_samples[:,i], color='k', linestyle='--', label='True')

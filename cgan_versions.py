@@ -89,6 +89,7 @@ class WCGAN(CGAN):
 
         best_save_path = os.path.join(self.param_dir,
                             "epoch_best.pt") # Path to save best params to
+        print("Best model saved to:", best_save_path)
 
         # gen_opt = torch.optim.Adam(self.gen.parameters(),lr = self.config["gen_lr"],betas=(0.5,0.9))
         # disc_opt = torch.optim.Adam(self.critic.parameters(), lr = self.config["disc_lr"],betas=(0.5,0.9))
@@ -210,7 +211,7 @@ class WCGAN(CGAN):
 
         if not os.path.exists(self.plots_path):
             os.makedirs(self.plots_path)
-
+        print("Plots path:",self.plots_path)
         title = 'history'
         plt.figure()
         plt.plot(self.epoch_ll,self.val_ll, label = "val ll")
@@ -274,7 +275,7 @@ class WCGAN(CGAN):
         title = 'mean conditional W1 distance'
         plt.figure()
         plt.plot(self.epoch_ll,self.mean_cond_w1_dist, label = 'test')
-        if all(self.mean_cond_w1_dist_train):
+        if any(self.mean_cond_w1_dist_train):
             plt.plot(self.epoch_ll, self.mean_cond_w1_dist_train, label = 'train')
         plt.title(title)
         plt.xlabel('Epoch')
@@ -285,7 +286,7 @@ class WCGAN(CGAN):
         title = 'mean conditional W2 distance'
         plt.figure()
         plt.plot(self.epoch_ll,self.mean_cond_w2_dist, label = 'test')
-        if all(self.mean_cond_w2_dist_train):
+        if any(self.mean_cond_w2_dist_train):
             plt.plot(self.epoch_ll, self.mean_cond_w2_dist_train, label = 'train')
         plt.title(title)
         plt.xlabel('Epoch')
@@ -295,7 +296,7 @@ class WCGAN(CGAN):
 
         title = 'conditional W1 distance'
         plt.figure()
-        if all(self.cond_w1_dist_train):
+        if any(self.cond_w1_dist_train):
             plt.plot(self.cond_w1_dist_train, label = 'train')
         plt.plot(self.cond_w1_dist, label = 'test')
         plt.xlabel('Index')
@@ -306,7 +307,7 @@ class WCGAN(CGAN):
 
         title = 'conditional W2 distance'
         plt.figure()
-        if all(self.cond_w2_dist_train):
+        if any(self.cond_w2_dist_train):
             plt.plot(self.cond_w2_dist_train, label='train')
         plt.plot(self.cond_w2_dist, label='test')
         plt.xlabel('Index')
@@ -332,7 +333,7 @@ class WCGAN(CGAN):
         print('Training Finished. Took {:.4f} seconds or {:.4f} hours to complete.'.format(finish_time, finish_time/3600))
     
     def logging(self):
-        if self.mean_cond_w1_dist_train!=None:
+        if any(self.mean_cond_w1_dist_train):
             col = ['epoch','discriminator','generator',
                'Actual wasserstein-1 distance (Training)','Actual Wasserstein-1 distance (Validation)',
                 'Estimated wasserstein-1 distance (Training)','Estimated wasserstein-1 distance (Validation)',
