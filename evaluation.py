@@ -131,8 +131,8 @@ def conditional_wasserstein(model, data):
         y_real_std = np.std(y_real, axis=0)
         M_wasserstein1_normalised = np.abs(M_wasserstein1/y_real_std)
         M_wasserstein2_normalised = np.abs(M_wasserstein2/y_real_std)
-        tmp.append(M_wasserstein1_normalised)
-        tmp2.append(M_wasserstein2_normalised)
+        tmp.append(M_wasserstein1_normalised[0])
+        tmp2.append(M_wasserstein2_normalised[0])
     
     # array of W_p distances for each conditional input
     Wasserstein1_dist = np.array(tmp)

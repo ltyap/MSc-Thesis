@@ -221,6 +221,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'generator losses'
         plt.figure()
@@ -230,6 +231,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'discriminator losses'
         plt.figure()
@@ -241,6 +243,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'wasserstein 1 distance'
         plt.figure()
@@ -253,6 +256,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'wasserstein 2 distance'
         plt.figure()
@@ -263,6 +267,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'gradient norm'
         plt.figure()
@@ -271,6 +276,7 @@ class WCGAN(CGAN):
         plt.title(title)
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'mean conditional W1 distance'
         plt.figure()
@@ -282,6 +288,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'mean conditional W2 distance'
         plt.figure()
@@ -293,6 +300,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'conditional W1 distance'
         plt.figure()
@@ -304,7 +312,8 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
-
+        plt.close()
+        
         title = 'conditional W2 distance'
         plt.figure()
         if any(self.cond_w2_dist_train):
@@ -315,6 +324,7 @@ class WCGAN(CGAN):
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         print("best ll:{}".format(best_ll))
         print("best mae:{}".format(best_mae))

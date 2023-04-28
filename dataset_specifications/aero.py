@@ -13,18 +13,16 @@ class AeroSet(Dataset):
         self.x_dim = 3
         self.y_dim = 1
         self.synthetic = False        
-        self.channels = ['TwrBsMyt_[kN-m] max', 'TwrBsMyt_[kN-m] stddev',
-       'TwrBsMyt_[kN-m] ST_DEL', 
-       'RootMyb1_[kN-m] mean', 'RootMyb1_[kN-m] max', 'RootMyb1_[kN-m] stddev',
-       'RootMyb1_[kN-m] ST_DEL', 'RootMxb1_[kN-m] mean', 'RootMxb1_[kN-m] max',
-       'RootMxb1_[kN-m] stddev', 'RootMxb1_[kN-m] ST_DEL',
-     'YawBrMyn_[kN-m] mean', 'YawBrMyn_[kN-m] max',
-       'YawBrMyn_[kN-m] stddev', 'YawBrMyn_[kN-m] ST_DEL']
+        self.channels = ['TwrBsMyt_[kN-m] mean', 'TwrBsMyt_[kN-m] max', 'TwrBsMyt_[kN-m] stddev','TwrBsMyt_[kN-m] ST_DEL', 
+                         'RootMyb1_[kN-m] mean', 'RootMyb1_[kN-m] max', 'RootMyb1_[kN-m] stddev','RootMyb1_[kN-m] ST_DEL',
+                         'RootMxb1_[kN-m] mean', 'RootMxb1_[kN-m] max', 'RootMxb1_[kN-m] stddev', 'RootMxb1_[kN-m] ST_DEL',
+                         'YawBrMyn_[kN-m] mean', 'YawBrMyn_[kN-m] max', 'YawBrMyn_[kN-m] stddev', 'YawBrMyn_[kN-m] ST_DEL']
         
         self.inputs = ['URef','PLExp','IECturbc']
 
         # self.channel_name = 'YawBrMyn_[kN-m] ST_DEL'
         self.key = {
+            "TwrBsMyt_[kN-m] mean": "TwrBsMyt_mean",
             "TwrBsMyt_[kN-m] max": "TwrBsMyt_max",
             'TwrBsMyt_[kN-m] stddev': "TwrBsMyt_stddev",
             'TwrBsMyt_[kN-m] ST_DEL':"TwrBsMyt_ST_DEL", 

@@ -38,18 +38,19 @@ dataset = dataset_list.get_dataset_spec(name)()
 """
 
 list_of_channels = dataset.channels
-CHANNEL_NAME = "YawBrMyn_[kN-m] ST_DEL"
+# CHANNEL_NAME = "YawBrMyn_[kN-m] ST_DEL"
+CHANNEL_NAME = list_of_channels[-1]
 # index = list(dataset.key).index(CHANNEL_NAME)
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
 
 # For saving plots
 PLOT_PATH = './plots'
-PLT_DATASET_NAME = 'aero/{}'.format(DATASET_NAME)
+PLT_DATASET_NAME = '{}/{}'.format(name,DATASET_NAME)
 
 # path for saving parameters of model
-PARAM_PATH = './param_best/aero/{}'.format(DATASET_NAME)
-FILE_NAME = 'wcgan_{}'.format('1')
+PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
+FILE_NAME = 'wcgan_{}'.format('2')
 
 #CHANGE DIMENSIONS OF DATA ACCORDINGLY
 X_DIM = 3
