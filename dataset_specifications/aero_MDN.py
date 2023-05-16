@@ -19,7 +19,8 @@ class AeroMDNSet(Dataset):
      'YawBrMyn_[kN-m] mean', 'YawBrMyn_[kN-m] max','YawBrMyn_[kN-m] stddev', 'YawBrMyn_[kN-m] ST_DEL']
         
         self.inputs = ['URef','PLExp','IECturbc']
-
+        path = "datasets/{}/raw_data/train/validation/data_raw.dat".format(self.name)
+        self.val_path = path
         # self.channel_name = 'YawBrMyn_[kN-m] ST_DEL' #----> set accordingly
         self.key = {
             "TwrBsMyt_[kN-m] max": "TwrBsMyt_max",
@@ -45,9 +46,6 @@ class AeroMDNSet(Dataset):
         df_test = pd.read_csv("datasets/{}/raw_data/test/data_raw.dat".format(self.name), header = 0, index_col = 0)
 
         tmp = self.inputs+self.channels
-        # print("tmp:", tmp)
-        # train = df_train[["URef", "PLExp", "IECturbc", self.channel_name]]
-        # test = df_test.loc[:, ["URef", "PLExp", "IECturbc", self.channel_name]]
         train = df_train.loc[:, tmp]
         test = df_test.loc[:, tmp]
         self.train_set = train
@@ -57,6 +55,8 @@ class AeroMDNSet(Dataset):
         print("Path to scaling data:", path)
         scaling_ref = pd.read_csv(path, header = 0, index_col = 0) # ----------------------------> update training data path here (used only for scaling)
         self.scaling_ref = scaling_ref.loc[:, tmp]
+
+
         return train, test
     def plot_test_data(self, test_data_scaled):
         for channel_name in self.channels:

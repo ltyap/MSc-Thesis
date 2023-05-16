@@ -28,19 +28,14 @@ print("Dataset path:", DATASET_PATH)
 dataset = dataset_list.get_dataset_spec(name)()
 
 """
-['TwrBsMyt_[kN-m] max', 'TwrBsMyt_[kN-m] stddev',
-       'TwrBsMyt_[kN-m] ST_DEL', 
-       'RootMyb1_[kN-m] mean', 'RootMyb1_[kN-m] max', 'RootMyb1_[kN-m] stddev',
-       'RootMyb1_[kN-m] ST_DEL', 'RootMxb1_[kN-m] mean', 'RootMxb1_[kN-m] max',
-       'RootMxb1_[kN-m] stddev', 'RootMxb1_[kN-m] ST_DEL',
-     'YawBrMyn_[kN-m] mean', 'YawBrMyn_[kN-m] max',
-       'YawBrMyn_[kN-m] stddev', 'YawBrMyn_[kN-m] ST_DEL']
+'TwrBsMyt_[kN-m] mean', 'TwrBsMyt_[kN-m] max', 'TwrBsMyt_[kN-m] stddev','TwrBsMyt_[kN-m] ST_DEL', 
+'RootMyb1_[kN-m] mean', 'RootMyb1_[kN-m] max', 'RootMyb1_[kN-m] stddev','RootMyb1_[kN-m] ST_DEL',
+'RootMxb1_[kN-m] mean', 'RootMxb1_[kN-m] max', 'RootMxb1_[kN-m] stddev', 'RootMxb1_[kN-m] ST_DEL',
+'YawBrMyn_[kN-m] mean', 'YawBrMyn_[kN-m] max', 'YawBrMyn_[kN-m] stddev', 'YawBrMyn_[kN-m] ST_DEL'
 """
 
 list_of_channels = dataset.channels
-# CHANNEL_NAME = "YawBrMyn_[kN-m] ST_DEL"
-CHANNEL_NAME = list_of_channels[-1]
-# index = list(dataset.key).index(CHANNEL_NAME)
+CHANNEL_NAME = list_of_channels[3]
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
 
@@ -50,7 +45,7 @@ PLT_DATASET_NAME = '{}/{}'.format(name,DATASET_NAME)
 
 # path for saving parameters of model
 PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
-FILE_NAME = 'wcgan_{}'.format('2')
+FILE_NAME = 'wcgan'
 
 #CHANGE DIMENSIONS OF DATA ACCORDINGLY
 X_DIM = 3
@@ -115,14 +110,14 @@ config = {
     "pdf_index":"100",
     "scatter": 0,
     "kde_batch_size": 10,
-    "n_critic": 7,
+    "n_critic": 5,
     "lambda_gp": 2e-2,
     'one-sided': True
 }
 nn_spec = {'gen_spec' : {
     "other_dim": config["noise_dim"],#noise dimensions
     "cond_dim": X_DIM,#conditioning data
-    "nodes_per_layer": [128,128,128,128],
+    "nodes_per_layer": [64,64,64,64],
     "output_dim": Y_DIM,#fake data dimensions
     "activation": nn.ReLU(),
     "type": FeedForward,
@@ -134,7 +129,7 @@ nn_spec = {'gen_spec' : {
 'disc_spec': {
     "other_dim": Y_DIM,#actual data dimensions
     "cond_dim": X_DIM,    
-    "nodes_per_layer": [128,128,128,128],
+    "nodes_per_layer": [64,64,64,64],
     # "cond_layers": [64],
     # "other_layers":[64],
     "output_dim": 1,#output logit

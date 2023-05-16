@@ -313,7 +313,7 @@ class WCGAN(CGAN):
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
         plt.close()
-        
+
         title = 'conditional W2 distance'
         plt.figure()
         if any(self.cond_w2_dist_train):
@@ -344,28 +344,34 @@ class WCGAN(CGAN):
     
     def logging(self):
         if any(self.mean_cond_w1_dist_train):
-            col = ['epoch','discriminator','generator',
+            col = ['epoch','discriminator','discriminator (val)','generator',
                'Actual wasserstein-1 distance (Training)','Actual Wasserstein-1 distance (Validation)',
                 'Estimated wasserstein-1 distance (Training)','Estimated wasserstein-1 distance (Validation)',
-                'Actual Wasserstein-2 distance (Training)', "Actual wasserstein-2 distance"]
-            losses = pd.DataFrame(zip(self.epoch_ll, self.discriminator_loss, self.generator_loss,
+                'Actual Wasserstein-2 distance (Training)', "Actual wasserstein-2 distance",
+                'Mean Cond. Wasserstein-1 dist (Training)', 'Mean Cond. Wasserstein-1 dist (Test)',
+                'Mean Cond. Wasserstein-2 dist (Training)', 'Mean Cond. Wasserstein-2 dist (Test)']
+            losses = pd.DataFrame(zip(self.epoch_ll, self.discriminator_loss, self.discriminator_loss_val,self.generator_loss,
                                 self.w1_dist_train, self.w1_dist,
                                 self.estimated_w1_dist, self.estimated_w1_dist_val,
-                                self.w2_dist_train, self.w2_dist),
+                                self.w2_dist_train, self.w2_dist,
+                                self.mean_cond_w1_dist_train,self.mean_cond_w1_dist,
+                                self.mean_cond_w2_dist_train, self.mean_cond_w2_dist),
                               columns=col)
             cond_wdist = pd.DataFrame(zip(self.cond_w1_dist_train, self.cond_w1_dist,
                                 self.cond_w2_dist_train, self.cond_w2_dist),
                                 columns=["cond w1 dist (train)","cond w1 dist (test)",
                                         "cond w2 dist (train)","cond w2 dist (test)"])
         else:
-            col = ['epoch','discriminator','generator',
+            col = ['epoch','discriminator','discriminator (val)','generator',
                 'Actual wasserstein-1 distance (Validation)',
                 'Estimated Wasserstein-1 distance (Training)','Estimated wasserstein-1 distance (Validation)',
-                'Actual Wasserstein-2 distance']
-            losses = pd.DataFrame(zip(self.epoch_ll,self.discriminator_loss,self.generator_loss,
+                'Actual Wasserstein-2 distance',
+                'Mean Cond. Wasserstein-1 dist (Test)','Mean Cond. Wasserstein-2 dist (Test)']
+            losses = pd.DataFrame(zip(self.epoch_ll,self.discriminator_loss, self.discriminator_loss_val,self.generator_loss,
                                     self.w1_dist,
                                     self.estimated_w1_dist, self.estimated_w1_dist_val,
-                                    self.w2_dist),
+                                    self.w2_dist,
+                                    self.mean_cond_w1_dist, self.mean_cond_w2_dist),
                                 columns=col)
             cond_wdist = pd.DataFrame(zip(self.cond_w1_dist, self.cond_w2_dist),
                                 columns=["cond w1 dist (test)", "cond w2 dist (test)"])

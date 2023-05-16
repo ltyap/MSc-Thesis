@@ -35,8 +35,9 @@ def evaluate_model(model, data_val, data_train, data_test=None, data_train_repea
     evaluation_vals['cond Wasserstein-1 dist'] = cond_w1_dist
     evaluation_vals['cond Wasserstein-2 dist'] = cond_w2_dist
 
-    evaluation_vals_train = model.eval(data_train, kde_eval, use_best_kernel_scale = testing)
-    w1_dist_train, w2_dist_train = wasserstein_dist(model, data_train)
+    data_train_partial = LabelledData(x=data_train.x[0:10000],y=data_train.y[0:10000])
+    evaluation_vals_train = model.eval(data_train_partial, kde_eval, use_best_kernel_scale = testing)
+    w1_dist_train, w2_dist_train = wasserstein_dist(model, data_train_partial)
     evaluation_vals_train['Wasserstein-1 dist'] = w1_dist_train
     evaluation_vals_train['Wasserstein-2 dist'] = w2_dist_train
     if data_train_repeated != None:

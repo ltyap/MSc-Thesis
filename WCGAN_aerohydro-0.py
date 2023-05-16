@@ -36,7 +36,7 @@ dataset = dataset_list.get_dataset_spec(name)()
 
 list_of_channels = dataset.channels
 # CHANNEL_NAME = "TwrBsMyt_[kN-m] mean"
-CHANNEL_NAME = list_of_channels[0]
+CHANNEL_NAME = list_of_channels[-1]
 # index = list(dataset.key).index(CHANNEL_NAME)
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
@@ -95,7 +95,7 @@ def val_func(model, epoch):
 
 config = {
     "noise_dim": 30,
-    "epochs": 6000,
+    "epochs": 10000,
     "batch_size": 200,
     "gen_lr": 2e-4,
     "disc_lr": 1e-4,
@@ -115,7 +115,7 @@ config = {
 nn_spec = {'gen_spec' : {
     "other_dim": config["noise_dim"],#noise dimensions
     "cond_dim": X_DIM,#conditioning data
-    "nodes_per_layer": [64,64,64,64,64,64],
+    "nodes_per_layer": [64,64,64,64],
     "output_dim": Y_DIM,#fake data dimensions
     "activation": nn.ReLU(),
     "type": FeedForward,
@@ -127,7 +127,7 @@ nn_spec = {'gen_spec' : {
 'disc_spec': {
     "other_dim": Y_DIM,#actual data dimensions
     "cond_dim": X_DIM,    
-    "nodes_per_layer": [128,128,128,128],
+    "nodes_per_layer": [64,64,64,64],
     # "cond_layers": [64],
     # "other_layers":[64],
     "output_dim": 1,#output logit

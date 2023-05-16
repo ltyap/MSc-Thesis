@@ -6,7 +6,7 @@ from sklearn import model_selection as model
 from sklearn.preprocessing import StandardScaler
 import dataset_list 
 
-name = 'aero'
+name = 'aero_MDN'
 print('Dataset:',name)
 
 dataset = dataset_list.get_dataset_spec(name)()
@@ -18,7 +18,13 @@ train_set_scaled = ss.transform(train_set)
 # Scale test data based on scaling reference
 test_set_scaled = ss.transform(test_set)
 
-train_split, val_split = model.train_test_split(train_set_scaled, test_size=0.2, random_state=42)
+if os.path.exists(dataset.val_path):
+    train_split = train_set_scaled
+    df_val = pd.read_csv(dataset.val_path, header = 0, index_col = 0)
+    val = df_val.loc[:, dataset.inputs+dataset.channels]
+    val_split = ss.transform(val)
+else:
+    train_split, val_split = model.train_test_split(train_set_scaled, test_size=0.2, random_state=42)
 
 # Check for dataset directory
 if not os.path.exists(dataset.dataset_save_path):
@@ -36,4 +42,4 @@ else:
     np.savetxt("{}/test.csv".format(dataset.dataset_save_path), test_set_scaled,delimiter=",")
 
 # # Plotting
-dataset.plot_test_data(test_set_scaled)
+# dataset.plot_test_data(test_set_scaled)

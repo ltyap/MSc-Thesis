@@ -21,7 +21,7 @@ plt.rc("legend", fontsize=18)
 
 #import data
 name = 'aero_MDN'
-selection = '685' # number of training samples to use
+selection = '23000' # number of training samples to use
 runs = 10
 DATASET_PATH = './datasets/{}/{}'.format(name, selection)
 assert os.path.exists(DATASET_PATH),("dataset folder {} does not exist".format(DATASET_PATH))
@@ -38,12 +38,10 @@ dataset = dataset_list.get_dataset_spec(name)()
 
 list_of_channels = dataset.channels
 # CHANNEL_NAME = "YawBrMyn_[kN-m] ST_DEL"
-CHANNEL_NAME = list_of_channels[-1]
+CHANNEL_NAME = list_of_channels[-2]
 # index = list(dataset.key).index(CHANNEL_NAME)
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
-
-
 
 for run in range(runs):
     print("Run no.:", run)
@@ -102,7 +100,6 @@ for run in range(runs):
 
     def val_func(model, epoch):
         return eval.evaluate_model(model, data_val = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
-
     config = {
         "noise_dim": 30,
         "epochs": 10000,

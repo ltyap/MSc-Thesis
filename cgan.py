@@ -253,7 +253,7 @@ class CGAN:
         title = 'mean conditional W1 distance'
         plt.figure()
         plt.plot(self.epoch_ll,self.mean_cond_w1_dist, label = 'test')
-        if all(self.mean_cond_w1_dist_train):
+        if any(self.mean_cond_w1_dist_train):
             plt.plot(self.epoch_ll, self.mean_cond_w1_dist_train, label='train')
         plt.title(title)
         plt.legend()
@@ -264,7 +264,7 @@ class CGAN:
         title = 'mean conditional W2 distance'
         plt.figure()
         plt.plot(self.epoch_ll,self.mean_cond_w2_dist, label = 'test')
-        if all(self.mean_cond_w2_dist_train):
+        if any(self.mean_cond_w2_dist_train):
             plt.plot(self.epoch_ll, self.mean_cond_w2_dist_train, label = 'train')
         plt.title(title)
         plt.legend()
@@ -353,7 +353,7 @@ class CGAN:
             samples = self.gen(gen_input)
         return samples
     def logging(self):
-        if self.mean_cond_w1_dist_train:
+        if any(self.mean_cond_w1_dist_train):
             col = ['discriminator','generator', 'fooling', 
                    'Actual wasserstein 1 distance (train)', 'Actual wasserstein 1 distance (val)',
                     'Actual wasserstein 2 distance (train)','Actual wasserstein 2 distance (val)',
@@ -372,7 +372,7 @@ class CGAN:
         else:
             col = ['discriminator','generator', 'fooling', 
                    'Actual wasserstein 1 distance (val)', 'Actual wasserstein 2 distance (val)',
-                    'mean conditional wasserstein 1 distance (val)', 'mean conditional wasserstein 2 distance (val)']
+                    'mean conditional wasserstein 1 distance (test)', 'mean conditional wasserstein 2 distance (test)']
             losses = pd.DataFrame(zip(self.discriminator_loss, self.generator_loss, self.fooling,
                                     self.w1_dist, self.w2_dist,
                                     self.mean_cond_w1_dist, self.mean_cond_w2_dist),
