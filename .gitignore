@@ -7,3 +7,4 @@ runscript.pbs.orig
 torch/
 postprocess/
 aero_MDN_*/
+datasets/floating

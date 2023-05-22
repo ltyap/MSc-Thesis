@@ -21,7 +21,7 @@ plt.rc("legend", fontsize=18)
 
 #import data
 name = 'aero_MDN'
-selection = '23000' # number of training samples to use
+selection = '2200' # number of training samples to use
 runs = 10
 DATASET_PATH = './datasets/{}/{}'.format(name, selection)
 assert os.path.exists(DATASET_PATH),("dataset folder {} does not exist".format(DATASET_PATH))
@@ -38,7 +38,7 @@ dataset = dataset_list.get_dataset_spec(name)()
 
 list_of_channels = dataset.channels
 # CHANNEL_NAME = "YawBrMyn_[kN-m] ST_DEL"
-CHANNEL_NAME = list_of_channels[-2]
+CHANNEL_NAME = list_of_channels[-1]
 # index = list(dataset.key).index(CHANNEL_NAME)
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
@@ -68,7 +68,6 @@ for run in range(runs):
         "x_dim": X_DIM,
         "y_dim": Y_DIM
     }
-    num_samples_real = 300
     dataset_dir = constants['dataset_path']
     assert os.path.exists(dataset_dir),("dataset folder {} does not exist".format(dataset_dir))
 
@@ -165,14 +164,15 @@ for run in range(runs):
     aero_test_raw = df_test.loc[:, dataset.inputs+[CHANNEL_NAME]]
     test_raw = Dataset.LabelledData(x= aero_test_raw.to_numpy()[:,:X_DIM],y = aero_test_raw.to_numpy()[:,X_DIM:])
 
-    x_values_scale, x_values_index = np.unique(test_data.x, axis = 0, return_index=True)
+    x_values_scale, x_values_index, counts = np.unique(test_data.x, axis = 0, return_counts = True, return_index=True)
     x_values = np.unique(test_raw.x, axis = 0)
     num_samples_gen = 3000
     sort =np.argsort(x_values_index)
     x_values_scale = x_values_scale[sort]
     x_values_index = x_values_index[sort]
     x_values = x_values[sort]
-
+    start_idx = x_values_index
+    end_idx = counts+x_values_index
     samplepdf_imgs_path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'Sample_PDF')
 
     if not os.path.exists(samplepdf_imgs_path):
@@ -184,16 +184,13 @@ for run in range(runs):
     assert os.path.exists(samplepdf_imgs_path),("results folder {} does not exist".format(samplepdf_imgs_path))
 
     gen_samples = np.zeros((num_samples_gen,len(x_values_scale)))
-    real_samples = np.zeros((num_samples_real,len(x_values_scale)))
 
     print('Plotting samples for all x-locations...')
     for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
         gen_samples[:,i] = get_samples(wcgan_model, values_scaled, num_samples_gen).squeeze(1)
         plt.figure()
         sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
-        tmp = indexes(test_data.x[idx], test_data.x)
-        real_samples[:,i] = test_data.y[tmp].squeeze()
-        sns.kdeplot(real_samples[:,i], color='k', linestyle='--', label='True')
+        sns.kdeplot(test_data.y[start_idx[i]:end_idx[i]].squeeze(), color='k', linestyle='--', label='True')
         plt.title('x={}'.format(x_values[i]), fontsize=10)
         plt.tight_layout()
         plt.legend()
@@ -202,5 +199,7 @@ for run in range(runs):
     print('Plotting samples for all x-locations finished')
 
     print('Writing samples...')
-    np.savetxt(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv') ,gen_samples, delimiter=',')
+    path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME)
+    with open('{}/samples.csv'.format(path), 'w') as f:
+        np.savetxt(f, gen_samples, delimiter=',')
     print('Done')

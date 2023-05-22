@@ -21,6 +21,7 @@ plt.rc("legend", fontsize=18)
 
 #import data
 name = 'aero'
+runs = 10
 DATASET_PATH = './datasets/{}'.format(name)
 assert os.path.exists(DATASET_PATH),("dataset folder {} does not exist".format(DATASET_PATH))
 
@@ -35,168 +36,170 @@ dataset = dataset_list.get_dataset_spec(name)()
 """
 
 list_of_channels = dataset.channels
-CHANNEL_NAME = list_of_channels[3]
+CHANNEL_NAME = list_of_channels[2]
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
 
-# For saving plots
-PLOT_PATH = './plots'
-PLT_DATASET_NAME = '{}/{}'.format(name,DATASET_NAME)
+for run in range(runs):
+    print("Run no.:", run)
 
-# path for saving parameters of model
-PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
-FILE_NAME = 'wcgan'
+    # For saving plots
+    PLOT_PATH = './plots'
+    PLT_DATASET_NAME = '{}/{}'.format(name,DATASET_NAME)
 
-#CHANGE DIMENSIONS OF DATA ACCORDINGLY
-X_DIM = 3
-Y_DIM = 1
+    # path for saving parameters of model
+    PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
+    FILE_NAME = 'wcgan/RUN-{}'.format(run)
 
-constants = {
-    "dataset_path": DATASET_PATH,
-    "dataset_name": DATASET_NAME,
-    "channel_name": CHANNEL_NAME,
-    "plot_path": PLOT_PATH,
-    "plt_dataset_name": PLT_DATASET_NAME,
-    "param_path": PARAM_PATH,
-    "file_name": FILE_NAME,
-    "x_dim": X_DIM,
-    "y_dim": Y_DIM
-}
-num_samples_real = 300
-dataset_dir = constants['dataset_path']
-assert os.path.exists(dataset_dir),("dataset folder {} does not exist".format(dataset_dir))
+    #CHANGE DIMENSIONS OF DATA ACCORDINGLY
+    X_DIM = dataset.x_dim
+    Y_DIM = dataset.y_dim
 
-splits = {}
-scatter_plot = 0
-for split in ("train","test","val"):
-    data_path = os.path.join(dataset_dir,"{}.csv".format(split))
-    assert os.path.exists(data_path),"data file {} does not exist".format(data_path)
+    constants = {
+        "dataset_path": DATASET_PATH,
+        "dataset_name": DATASET_NAME,
+        "channel_name": CHANNEL_NAME,
+        "plot_path": PLOT_PATH,
+        "plt_dataset_name": PLT_DATASET_NAME,
+        "param_path": PARAM_PATH,
+        "file_name": FILE_NAME,
+        "x_dim": X_DIM,
+        "y_dim": Y_DIM
+    }
+    dataset_dir = constants['dataset_path']
+    assert os.path.exists(dataset_dir),("dataset folder {} does not exist".format(dataset_dir))
 
-    data = pd.read_csv(data_path,delimiter=",")
-    data = data[dataset.inputs+[CHANNEL_NAME]].to_numpy()
-    # For 1D data only
-    if scatter_plot:
-        plt.figure
-        plt.scatter(data[:,:1],data[:,1:], c='k')
-        plt.xlabel("x")
-        plt.ylabel('y')
-        plt.title(split)
-        plt.show()
-    torch_data = torch.tensor(data, device="cpu").float()
-    # if split == 'train':
-    #     tmp = np.random.choice(len(torch_data),6000, replace=False)
-    #     splits[split] = Dataset.LabelledData(x=torch_data[tmp,:X_DIM],y=torch_data[tmp,X_DIM:])
+    splits = {}
+    scatter_plot = 0
+    for split in ("train","test","val"):
+        data_path = os.path.join(dataset_dir,"{}.csv".format(split))
+        assert os.path.exists(data_path),"data file {} does not exist".format(data_path)
 
-    splits[split] = Dataset.LabelledData(x=torch_data[:,:X_DIM],y=torch_data[:,X_DIM:])
-train_data = splits["train"]
-val_data = splits['val']
-test_data = splits['test']
+        data = pd.read_csv(data_path,delimiter=",")
+        data = data[dataset.inputs+[CHANNEL_NAME]].to_numpy()
+        # For 1D data only
+        if scatter_plot:
+            plt.figure
+            plt.scatter(data[:,:1],data[:,1:], c='k')
+            plt.xlabel("x")
+            plt.ylabel('y')
+            plt.title(split)
+            plt.show()
+        torch_data = torch.tensor(data, device="cpu").float()
+        # if split == 'train':
+        #     tmp = np.random.choice(len(torch_data),6000, replace=False)
+        #     splits[split] = Dataset.LabelledData(x=torch_data[tmp,:X_DIM],y=torch_data[tmp,X_DIM:])
 
-def val_func(model, epoch):
-    return eval.evaluate_model(model, data_val = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
+        splits[split] = Dataset.LabelledData(x=torch_data[:,:X_DIM],y=torch_data[:,X_DIM:])
+    train_data = splits["train"]
+    val_data = splits['val']
+    test_data = splits['test']
 
-config = {
-    "noise_dim": 30,
-    "epochs": 10000,
-    "batch_size": 200,
-    "gen_lr": 2e-4,
-    "disc_lr": 1e-4,
-    "val_interval": 20,
-    "eval_batch_size": 1000,
-    "eval_samples": 200,
-    "kernel_scales": 50,
-    "kernel_scale_min": 0.001,
-    "kernel_scale_max": 0.7,
-    "pdf_index":"100",
-    "scatter": 0,
-    "kde_batch_size": 10,
-    "n_critic": 5,
-    "lambda_gp": 2e-2,
-    'one-sided': True
-}
-nn_spec = {'gen_spec' : {
-    "other_dim": config["noise_dim"],#noise dimensions
-    "cond_dim": X_DIM,#conditioning data
-    "nodes_per_layer": [64,64,64,64],
-    "output_dim": Y_DIM,#fake data dimensions
-    "activation": nn.ReLU(),
-    "type": FeedForward,
-    "dropout":None,
-    "activation_final": 0,
-    "batch_norm": None,
-    "spectral_normalisation": None
-},
-'disc_spec': {
-    "other_dim": Y_DIM,#actual data dimensions
-    "cond_dim": X_DIM,    
-    "nodes_per_layer": [64,64,64,64],
-    # "cond_layers": [64],
-    # "other_layers":[64],
-    "output_dim": 1,#output logit
-    "activation":nn.ReLU(),
-    "type": FeedForward,
-    "dropout": None,
-    "activation_final": 0,
-    "batch_norm": None,
-    "spectral_normalisation": None
-}
-}
+    def val_func(model, epoch):
+        return eval.evaluate_model(model, data_val = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
 
-savepath = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'learning_prog_idx{}'.format(config['pdf_index']))
-if not os.path.exists(savepath):
-    os.makedirs(savepath)
-else:
-    for f in os.listdir(savepath):
-        os.remove(os.path.join(savepath,f))
-print(config)
-print(nn_spec)
-wcgan_model = WCGAN(config, nn_spec, constants)
-wcgan_model.train(train_data, val_data, test_data, val_func)
+    config = {
+        "noise_dim": 30,
+        "epochs": 10000,
+        "batch_size": 200,
+        "gen_lr": 2e-4,
+        "disc_lr": 1e-4,
+        "val_interval": 20,
+        "eval_batch_size": 1000,
+        "eval_samples": 200,
+        "kernel_scales": 50,
+        "kernel_scale_min": 0.001,
+        "kernel_scale_max": 0.7,
+        "pdf_index":"100",
+        "scatter": 0,
+        "kde_batch_size": 10,
+        "n_critic": 5,
+        "lambda_gp": 2e-2,
+        'one-sided': True
+    }
+    nn_spec = {'gen_spec' : {
+        "other_dim": config["noise_dim"],#noise dimensions
+        "cond_dim": X_DIM,#conditioning data
+        "nodes_per_layer": [64,64,64,64],
+        "output_dim": Y_DIM,#fake data dimensions
+        "activation": nn.ReLU(),
+        "type": FeedForward,
+        "dropout":None,
+        "activation_final": 0,
+        "batch_norm": None,
+        "spectral_normalisation": None
+    },
+    'disc_spec': {
+        "other_dim": Y_DIM,#actual data dimensions
+        "cond_dim": X_DIM,    
+        "nodes_per_layer": [64,64,64,64],
+        # "cond_layers": [64],
+        # "other_layers":[64],
+        "output_dim": 1,#output logit
+        "activation":nn.ReLU(),
+        "type": FeedForward,
+        "dropout": None,
+        "activation_final": 0,
+        "batch_norm": None,
+        "spectral_normalisation": None
+    }
+    }
 
-# import raw data
-path = 'datasets/{}/raw_data/test/data_raw.dat'.format(name)
-assert os.path.exists(path),("raw dataset folder {} does not exist".format(dataset_dir))
+    savepath = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'learning_prog_idx{}'.format(config['pdf_index']))
+    if not os.path.exists(savepath):
+        os.makedirs(savepath)
+    else:
+        for f in os.listdir(savepath):
+            os.remove(os.path.join(savepath,f))
+    print(config)
+    print(nn_spec)
+    wcgan_model = WCGAN(config, nn_spec, constants)
+    wcgan_model.train(train_data, val_data, test_data, val_func)
 
-df_test = pd.read_csv(path, header = 0, index_col = 0)
-aero_test_raw = df_test.loc[:, ["URef", "PLExp", "IECturbc", CHANNEL_NAME]]
-test_raw = Dataset.LabelledData(x= aero_test_raw.to_numpy()[:,:X_DIM],y = aero_test_raw.to_numpy()[:,X_DIM:])
+    # import raw data
+    path = 'datasets/{}/raw_data/test/data_raw.dat'.format(name)
+    assert os.path.exists(path),("raw dataset folder {} does not exist".format(dataset_dir))
 
-x_values_scale, x_values_index = np.unique(test_data.x, axis = 0, return_index=True)
-x_values = np.unique(test_raw.x, axis = 0)
-num_samples_gen = 3000
-sort =np.argsort(x_values_index)
-x_values_scale = x_values_scale[sort]
-x_values_index = x_values_index[sort]
-x_values = x_values[sort]
+    df_test = pd.read_csv(path, header = 0, index_col = 0)
+    aero_test_raw = df_test.loc[:, ["URef", "PLExp", "IECturbc", CHANNEL_NAME]]
+    test_raw = Dataset.LabelledData(x= aero_test_raw.to_numpy()[:,:X_DIM],y = aero_test_raw.to_numpy()[:,X_DIM:])
 
-samplepdf_imgs_path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'Sample_PDF')
+    x_values_scale, x_values_index, counts = np.unique(test_data.x, axis = 0, return_counts = True, return_index=True)
+    x_values = np.unique(test_raw.x, axis = 0)
+    num_samples_gen = 3000
+    sort =np.argsort(x_values_index)
+    x_values_scale = x_values_scale[sort]
+    x_values_index = x_values_index[sort]
+    x_values = x_values[sort]
+    start_idx = x_values_index
+    end_idx = counts+x_values_index
+    samplepdf_imgs_path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'Sample_PDF')
 
-if not os.path.exists(samplepdf_imgs_path):
-    os.makedirs(samplepdf_imgs_path)
-else:
-    for f in os.listdir(samplepdf_imgs_path):
-        os.remove(os.path.join(samplepdf_imgs_path,f))
+    if not os.path.exists(samplepdf_imgs_path):
+        os.makedirs(samplepdf_imgs_path)
+    else:
+        for f in os.listdir(samplepdf_imgs_path):
+            os.remove(os.path.join(samplepdf_imgs_path,f))
 
-assert os.path.exists(samplepdf_imgs_path),("results folder {} does not exist".format(samplepdf_imgs_path))
+    assert os.path.exists(samplepdf_imgs_path),("results folder {} does not exist".format(samplepdf_imgs_path))
 
-gen_samples = np.zeros((num_samples_gen,len(x_values_scale)))
-real_samples = np.zeros((num_samples_real,len(x_values_scale)))
+    gen_samples = np.zeros((num_samples_gen,len(x_values_scale)))
 
-print('Plotting samples for all x-locations...')
-for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
-    gen_samples[:,i] = get_samples(wcgan_model, values_scaled, num_samples_gen).squeeze(1)
-    plt.figure()
-    sns.kdeplot(gen_samples[:,i], color ='b',label='Gen', bw_adjust=0.75)
-    tmp = indexes(test_data.x[idx], test_data.x)
-    real_samples[:,i] = test_data.y[tmp].squeeze()
-    sns.kdeplot(real_samples[:,i], color='k', linestyle='--', label='True')
-    plt.title('x={}'.format(x_values[i]), fontsize=10)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig('{}/idx_{}.png'.format(samplepdf_imgs_path, i))
-    plt.close()
-print('Plotting samples for all x-locations finished')
+    print('Plotting samples for all x-locations...')
+    for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
+        gen_samples[:,i] = get_samples(wcgan_model, values_scaled, num_samples_gen).squeeze(1)
+        plt.figure()
+        sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
+        sns.kdeplot(test_data.y[start_idx[i]:end_idx[i]].squeeze(), color='k', linestyle='--', label='True')
+        plt.title('x={}'.format(x_values[i]), fontsize=10)
+        plt.tight_layout()
+        plt.legend()
+        plt.savefig('{}/idx_{}.png'.format(samplepdf_imgs_path, i))
+        plt.close()
+    print('Plotting samples for all x-locations finished')
 
-print('Writing samples...')
-np.savetxt(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv') ,gen_samples, delimiter=',')
-print('Done')
+    print('Writing samples...')
+    path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME)
+    with open('{}/samples.csv'.format(path), 'w') as f:
+        np.savetxt(f, gen_samples, delimiter=',')
+    print('Done')

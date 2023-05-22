@@ -6,7 +6,7 @@ from sklearn import model_selection as model
 from sklearn.preprocessing import StandardScaler
 import dataset_list 
 
-name = 'aero_MDN'
+name = 'aerohydro'
 print('Dataset:',name)
 
 dataset = dataset_list.get_dataset_spec(name)()
@@ -42,4 +42,4 @@ else:
     np.savetxt("{}/test.csv".format(dataset.dataset_save_path), test_set_scaled,delimiter=",")
 
 # # Plotting
-# dataset.plot_test_data(test_set_scaled)
+dataset.plot_test_data(test_set_scaled)

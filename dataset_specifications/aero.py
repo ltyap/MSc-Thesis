@@ -13,7 +13,7 @@ class AeroSet(Dataset):
         self.x_dim = 3
         self.y_dim = 1
         self.synthetic = False        
-        self.val_path = None
+        self.val_path = "datasets/{}/raw_data/train/validation/data_raw.dat".format(self.name)
         self.channels = ['TwrBsMyt_[kN-m] mean', 'TwrBsMyt_[kN-m] max', 'TwrBsMyt_[kN-m] stddev','TwrBsMyt_[kN-m] ST_DEL', 
                          'RootMyb1_[kN-m] mean', 'RootMyb1_[kN-m] max', 'RootMyb1_[kN-m] stddev','RootMyb1_[kN-m] ST_DEL',
                          'RootMxb1_[kN-m] mean', 'RootMxb1_[kN-m] max', 'RootMxb1_[kN-m] stddev', 'RootMxb1_[kN-m] ST_DEL',
