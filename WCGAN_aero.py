@@ -21,7 +21,7 @@ plt.rc("legend", fontsize=18)
 
 #import data
 name = 'aero'
-runs = 10
+runs = 2
 DATASET_PATH = './datasets/{}'.format(name)
 assert os.path.exists(DATASET_PATH),("dataset folder {} does not exist".format(DATASET_PATH))
 
@@ -36,7 +36,7 @@ dataset = dataset_list.get_dataset_spec(name)()
 """
 
 list_of_channels = dataset.channels
-CHANNEL_NAME = list_of_channels[2]
+CHANNEL_NAME = list_of_channels[3]
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
 
@@ -49,7 +49,7 @@ for run in range(runs):
 
     # path for saving parameters of model
     PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
-    FILE_NAME = 'wcgan/RUN-{}'.format(run)
+    FILE_NAME = 'wcgan_exponential/RUN-{}'.format(run)
 
     #CHANGE DIMENSIONS OF DATA ACCORDINGLY
     X_DIM = dataset.x_dim
@@ -100,6 +100,7 @@ for run in range(runs):
 
     config = {
         "noise_dim": 30,
+        "noise_dist": 'exponential',
         "epochs": 10000,
         "batch_size": 200,
         "gen_lr": 2e-4,
@@ -122,7 +123,7 @@ for run in range(runs):
         "cond_dim": X_DIM,#conditioning data
         "nodes_per_layer": [64,64,64,64],
         "output_dim": Y_DIM,#fake data dimensions
-        "activation": nn.ReLU(),
+        "activation": nn.ELU(),
         "type": FeedForward,
         "dropout":None,
         "activation_final": 0,
@@ -136,7 +137,7 @@ for run in range(runs):
         # "cond_layers": [64],
         # "other_layers":[64],
         "output_dim": 1,#output logit
-        "activation":nn.ReLU(),
+        "activation":nn.ELU(),
         "type": FeedForward,
         "dropout": None,
         "activation_final": 0,
@@ -198,8 +199,17 @@ for run in range(runs):
         plt.close()
     print('Plotting samples for all x-locations finished')
 
+    x_values_repeated = x_values.repeat(num_samples_gen, axis=0)
+    tmp = pd.read_csv("datasets/{}/raw_data/train/data_raw.dat".format(dataset.name),header=0, index_col=0)
+    scaling = tmp.loc[:, CHANNEL_NAME]
+    scaling_mean = scaling.mean()
+    scaling_std = scaling.std()
+    rescaled_samples = gen_samples*scaling_std+scaling_mean
+    rescaled_samples_ = rescaled_samples.reshape(-1,1, order='F')
+    combined = np.hstack((x_values_repeated,rescaled_samples_))
+    df_combined = pd.DataFrame(combined, columns = dataset.inputs+[CHANNEL_NAME])
+
     print('Writing samples...')
     path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME)
-    with open('{}/samples.csv'.format(path), 'w') as f:
-        np.savetxt(f, gen_samples, delimiter=',')
+    df_combined.to_csv(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv'))
     print('Done')

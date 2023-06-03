@@ -21,7 +21,7 @@ plt.rc("legend", fontsize=18)
 
 #import data
 name = 'aero_MDN'
-selection = '2200' # number of training samples to use
+selection = '5700' # number of training samples to use
 runs = 10
 DATASET_PATH = './datasets/{}/{}'.format(name, selection)
 assert os.path.exists(DATASET_PATH),("dataset folder {} does not exist".format(DATASET_PATH))
@@ -38,7 +38,7 @@ dataset = dataset_list.get_dataset_spec(name)()
 
 list_of_channels = dataset.channels
 # CHANNEL_NAME = "YawBrMyn_[kN-m] ST_DEL"
-CHANNEL_NAME = list_of_channels[-1]
+CHANNEL_NAME = list_of_channels[2]
 # index = list(dataset.key).index(CHANNEL_NAME)
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
@@ -51,11 +51,11 @@ for run in range(runs):
 
     # path for saving parameters of model
     PARAM_PATH = './param_best/aero_MDN/{}'.format(DATASET_NAME)
-    FILE_NAME = 'wcgan_samplesize_{}/RUN-{}'.format(selection, run)
+    FILE_NAME = 'wcgan_lognormal/RUN-{}'.format(run)
 
     #CHANGE DIMENSIONS OF DATA ACCORDINGLY
-    X_DIM = 3
-    Y_DIM = 1
+    X_DIM = dataset.x_dim
+    Y_DIM = dataset.y_dim
 
     constants = {
         "dataset_path": DATASET_PATH,
@@ -101,6 +101,7 @@ for run in range(runs):
         return eval.evaluate_model(model, data_val = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
     config = {
         "noise_dim": 30,
+        "noise_dist": 'lognormal',
         "epochs": 10000,
         "batch_size": 200,
         "gen_lr": 2e-4,
@@ -198,8 +199,19 @@ for run in range(runs):
         plt.close()
     print('Plotting samples for all x-locations finished')
 
+    x_values_repeated = x_values.repeat(num_samples_gen, axis=0)
+    tmp = pd.read_csv("datasets/aero/raw_data/train/data_raw.dat",header=0, index_col=0)
+    scaling = tmp.loc[:, CHANNEL_NAME]
+    scaling_mean = scaling.mean()
+    scaling_std = scaling.std()
+    rescaled_samples = gen_samples*scaling_std+scaling_mean
+    rescaled_samples_ = rescaled_samples.reshape(-1,1, order='F')
+    combined = np.hstack((x_values_repeated,rescaled_samples_))
+    df_combined = pd.DataFrame(combined, columns = dataset.inputs+[CHANNEL_NAME])
+
+
+
     print('Writing samples...')
     path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME)
-    with open('{}/samples.csv'.format(path), 'w') as f:
-        np.savetxt(f, gen_samples, delimiter=',')
+    df_combined.to_csv(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv'))
     print('Done')

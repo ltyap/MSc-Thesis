@@ -36,7 +36,7 @@ dataset = dataset_list.get_dataset_spec(name)()
 
 list_of_channels = dataset.channels
 # CHANNEL_NAME = "TwrBsMyt_[kN-m] mean"
-CHANNEL_NAME = list_of_channels[-1]
+CHANNEL_NAME = list_of_channels[3]
 # index = list(dataset.key).index(CHANNEL_NAME)
 print("Channel name:", CHANNEL_NAME)
 DATASET_NAME = dataset.key[CHANNEL_NAME]
@@ -47,7 +47,7 @@ PLT_DATASET_NAME = '{}/{}'.format(name, DATASET_NAME)
 
 # path for saving parameters of model
 PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
-FILE_NAME = 'wcgan'
+FILE_NAME = 'wcgan-test1'
 
 #CHANGE DIMENSIONS OF DATA ACCORDINGLY
 X_DIM = dataset.x_dim
@@ -94,6 +94,7 @@ def val_func(model, epoch):
 
 config = {
     "noise_dim": 30,
+    "noise_dist": 'gaussian',
     "epochs": 10000,
     "batch_size": 200,
     "gen_lr": 2e-4,
@@ -104,11 +105,11 @@ config = {
     "kernel_scales": 50,
     "kernel_scale_min": 0.001,
     "kernel_scale_max": 0.7,
-    "pdf_index":"9100",
+    "pdf_index":"100",
     "scatter": 0,
     "kde_batch_size": 10,
     "n_critic": 5,
-    "lambda_gp": 2e-2,
+    "lambda_gp": 5,
     'one-sided': True
 }
 nn_spec = {'gen_spec' : {
@@ -184,8 +185,7 @@ print('Plotting samples for all x-locations...')
 for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
     gen_samples[:,i] = get_samples(wcgan_model, values_scaled, num_samples_gen).squeeze(1)
     plt.figure()
-    sns.kdeplot(gen_samples[:,i], color ='b',label='Gen', bw_adjust=0.75)
-    tmp = indexes(test_data.x[idx], test_data.x)
+    sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
     sns.kdeplot(test_data.y[start_idx[i]:end_idx[i]].squeeze(), color='k', linestyle='--', label='True')
     plt.title('x={}'.format(x_values[i]), fontsize=10)
     plt.tight_layout()
@@ -194,6 +194,17 @@ for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
     plt.close()
 print('Plotting samples for all x-locations finished')
 
+x_values_repeated = x_values.repeat(num_samples_gen, axis=0)
+tmp = pd.read_csv("datasets/{}/raw_data/train/data_raw.dat".format(dataset.name),header=0, index_col=0)
+scaling = tmp.loc[:, CHANNEL_NAME]
+scaling_mean = scaling.mean()
+scaling_std = scaling.std()
+rescaled_samples = gen_samples*scaling_std+scaling_mean
+rescaled_samples_ = rescaled_samples.reshape(-1,1, order='F')
+combined = np.hstack((x_values_repeated,rescaled_samples_))
+df_combined = pd.DataFrame(combined, columns = dataset.inputs+[CHANNEL_NAME])
+
 print('Writing samples...')
-np.savetxt(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv') ,gen_samples, delimiter=',')
+path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME)
+df_combined.to_csv(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv'))
 print('Done')

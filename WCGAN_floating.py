@@ -28,185 +28,188 @@ print("Dataset path:", DATASET_PATH)
 dataset = dataset_list.get_dataset_spec(name)()
 
 '''
-'Mt_x_1_1_mean', 'Mt_y_1_1_mean', 'Mt_x_14_2_mean', 'Mt_y_14_2_mean', 'Mb_x_1_1_mean',
-'Mb_y_1_1_mean', 'Fl_m1br1_EfTn_mean', 'Fl_m1br2_EfTn_mean',
-'Fl_m2br1_EfTn_mean', 'Fl_m2br2_EfTn_mean', 'Fl_m3br1_EfTn_mean',
-'Fl_m3br2_EfTn_mean', 'Roll_OF_mean', 'Pitch_OF_mean', 'Yaw_OF_mean',
-'uB1_x_17_mean', 'uB1_y_17_mean', 'uB1_z_17_mean', 'Mt_x_1_1_max',
-'Mt_y_1_1_max', 'Mt_x_14_2_max', 'Mt_y_14_2_max', 'Mb_x_1_1_max',
-'Mb_y_1_1_max', 'uaT_x_15_max', 'uaT_y_15_max', 'uaT_z_15_max',
-'Fl_m1br1_EfTn_max', 'Fl_m1br2_EfTn_max', 'Fl_m2br1_EfTn_max',
-'Fl_m2br2_EfTn_max', 'Fl_m3br1_EfTn_max', 'Fl_m3br2_EfTn_max',
-'Roll_OF_max', 'Pitch_OF_max', 'Yaw_OF_max', 'uB1_x_17_max',
-'uB1_y_17_max', 'uB1_z_17_max', 'Mt_y_1_1_stel','Mt_y_14_2_stel',
-'Mb_x_1_1_stel', 'Mb_y_1_1_stel', 'Mt_x_1_1_stel','Mt_x_14_2_stel' 
+'Mt_x_1_1_rms', 'Mt_x_14_2_rms', 
+'Mb_x_1_1_rms', 'Mb_y_1_1_rms',
+'Mt_x_1_1_mean', 'Mt_x_14_2_mean',
+'Mb_x_1_1_mean', 'Mb_y_1_1_mean',
+'Fl_m1br1_EfTn_rms',
+'Fl_m1br1_EfTn_mean', 'Pitch_OF_mean',
+'Mt_x_1_1_stel', 'Mt_y_1_1_stel', 'Mt_x_14_2_stel',
+'Mt_y_14_2_stel', 'Mb_x_1_1_stel', 'Mb_y_1_1_stel'
 '''
-list_of_channels = dataset.channels
-CHANNEL_NAME = list_of_channels[-2]
-print("Channel name:", CHANNEL_NAME)
-DATASET_NAME = CHANNEL_NAME
+num_channels = 1
+for channel in range(num_channels):
+    list_of_channels = dataset.channels[-4]
+    CHANNEL_NAME = list_of_channels[channel]
+    print("Channel name:", CHANNEL_NAME)
+    DATASET_NAME = CHANNEL_NAME
 
-# For saving plots
-PLOT_PATH = './plots'
-PLT_DATASET_NAME = '{}/{}'.format(name,DATASET_NAME)
+    # For saving plots
+    PLOT_PATH = './plots'
+    PLT_DATASET_NAME = '{}/{}'.format(name,DATASET_NAME)
 
-# path for saving parameters of model
-PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
-FILE_NAME = 'wcgan'
+    # path for saving parameters of model
+    PARAM_PATH = './param_best/{}/{}'.format(name, DATASET_NAME)
+    FILE_NAME = 'wcgan'
 
-#CHANGE DIMENSIONS OF DATA ACCORDINGLY
-X_DIM = dataset.x_dim
-Y_DIM = dataset.y_dim
+    #CHANGE DIMENSIONS OF DATA ACCORDINGLY
+    X_DIM = dataset.x_dim
+    Y_DIM = dataset.y_dim
 
-constants = {
-    "dataset_path": DATASET_PATH,
-    "dataset_name": DATASET_NAME,
-    "channel_name": CHANNEL_NAME,
-    "plot_path": PLOT_PATH,
-    "plt_dataset_name": PLT_DATASET_NAME,
-    "param_path": PARAM_PATH,
-    "file_name": FILE_NAME,
-    "x_dim": X_DIM,
-    "y_dim": Y_DIM
-}
-dataset_dir = constants['dataset_path']
-assert os.path.exists(dataset_dir),("dataset folder {} does not exist".format(dataset_dir))
+    constants = {
+        "dataset_path": DATASET_PATH,
+        "dataset_name": DATASET_NAME,
+        "channel_name": CHANNEL_NAME,
+        "plot_path": PLOT_PATH,
+        "plt_dataset_name": PLT_DATASET_NAME,
+        "param_path": PARAM_PATH,
+        "file_name": FILE_NAME,
+        "x_dim": X_DIM,
+        "y_dim": Y_DIM
+    }
+    dataset_dir = constants['dataset_path']
+    assert os.path.exists(dataset_dir),("dataset folder {} does not exist".format(dataset_dir))
 
-splits = {}
-scatter_plot = 0
-for split in ("train","test","val"):
-    data_path = os.path.join(dataset_dir,"{}.csv".format(split))
-    assert os.path.exists(data_path),"data file {} does not exist".format(data_path)
+    splits = {}
+    scatter_plot = 0
+    for split in ("train","test","val"):
+        data_path = os.path.join(dataset_dir,"{}.csv".format(split))
+        assert os.path.exists(data_path),"data file {} does not exist".format(data_path)
 
-    data = pd.read_csv(data_path,delimiter=",")
-    data = data[dataset.inputs+[CHANNEL_NAME]].to_numpy()
-    # For 1D data only
-    if scatter_plot:
-        plt.figure
-        plt.scatter(data[:,:1],data[:,1:], c='k')
-        plt.xlabel("x")
-        plt.ylabel('y')
-        plt.title(split)
-        plt.show()
-    torch_data = torch.tensor(data, device="cpu").float()
-    # if split == 'train':
-    #     tmp = np.random.choice(len(torch_data),6000, replace=False)
-    #     splits[split] = Dataset.LabelledData(x=torch_data[tmp,:X_DIM],y=torch_data[tmp,X_DIM:])
+        data = pd.read_csv(data_path,delimiter=",")
+        data = data[dataset.inputs+[CHANNEL_NAME]].to_numpy()
+        # For 1D data only
+        if scatter_plot:
+            plt.figure
+            plt.scatter(data[:,:1],data[:,1:], c='k')
+            plt.xlabel("x")
+            plt.ylabel('y')
+            plt.title(split)
+            plt.show()
+        torch_data = torch.tensor(data, device="cpu").float()
+        splits[split] = Dataset.LabelledData(x=torch_data[:,:X_DIM],y=torch_data[:,X_DIM:])
+    train_data = splits["train"]
+    val_data = splits['val']
+    test_data = splits['test']
 
-    splits[split] = Dataset.LabelledData(x=torch_data[:,:X_DIM],y=torch_data[:,X_DIM:])
-train_data = splits["train"]
-val_data = splits['val']
-test_data = splits['test']
+    def val_func(model, epoch):
+        return eval.evaluate_model(model, data_val = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
 
-def val_func(model, epoch):
-    return eval.evaluate_model(model, data_val = val_data, data_train = train_data, data_test = test_data, epoch = epoch)
+    config = {
+        "noise_dim": 30,
+        "epochs": 10000,
+        "batch_size": 200,
+        "gen_lr": 2e-4,
+        "disc_lr": 1e-4,
+        "val_interval": 20,
+        "eval_batch_size": 1000,
+        "eval_samples": 200,
+        "kernel_scales": 50,
+        "kernel_scale_min": 0.001,
+        "kernel_scale_max": 0.7,
+        "pdf_index":"100",
+        "scatter": 0,
+        "kde_batch_size": 10,
+        "n_critic": 5,
+        "lambda_gp": 2e-2,
+        'one-sided': True
+    }
+    nn_spec = {'gen_spec' : {
+        "other_dim": config["noise_dim"],#noise dimensions
+        "cond_dim": X_DIM,#conditioning data
+        "nodes_per_layer": [64,64,64,64],
+        "output_dim": Y_DIM,#fake data dimensions
+        "activation": nn.ReLU(),
+        "type": FeedForward,
+        "dropout":None,
+        "activation_final": 0,
+        "batch_norm": None,
+        "spectral_normalisation": None
+    },
+    'disc_spec': {
+        "other_dim": Y_DIM,#actual data dimensions
+        "cond_dim": X_DIM,    
+        "nodes_per_layer": [64,64,64,64],
+        # "cond_layers": [64,64],
+        # "other_layers":[64,64],
+        "output_dim": 1,#output logit
+        "activation":nn.ReLU(),
+        "type": FeedForward,
+        "dropout": None,
+        "activation_final": 0,
+        "batch_norm": None,
+        "spectral_normalisation": None
+    }
+    }
 
-config = {
-    "noise_dim": 30,
-    "epochs": 10000,
-    "batch_size": 200,
-    "gen_lr": 2e-4,
-    "disc_lr": 1e-4,
-    "val_interval": 20,
-    "eval_batch_size": 1000,
-    "eval_samples": 200,
-    "kernel_scales": 50,
-    "kernel_scale_min": 0.001,
-    "kernel_scale_max": 0.7,
-    "pdf_index":"100",
-    "scatter": 0,
-    "kde_batch_size": 10,
-    "n_critic": 5,
-    "lambda_gp": 2e-1,
-    'one-sided': True
-}
-nn_spec = {'gen_spec' : {
-    "other_dim": config["noise_dim"],#noise dimensions
-    "cond_dim": X_DIM,#conditioning data
-    "nodes_per_layer": [512,512,512,512],
-    "output_dim": Y_DIM,#fake data dimensions
-    "activation": nn.ReLU(),
-    "type": FeedForward,
-    "dropout":None,
-    "activation_final": 0,
-    "batch_norm": None,
-    "spectral_normalisation": None
-},
-'disc_spec': {
-    "other_dim": Y_DIM,#actual data dimensions
-    "cond_dim": X_DIM,    
-    "nodes_per_layer": [512,512,512,512],
-    # "cond_layers": [64],
-    # "other_layers":[64],
-    "output_dim": 1,#output logit
-    "activation":nn.ReLU(),
-    "type": FeedForward,
-    "dropout": None,
-    "activation_final": 0,
-    "batch_norm": None,
-    "spectral_normalisation": None
-}
-}
+    savepath = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'learning_prog_idx{}'.format(config['pdf_index']))
+    if not os.path.exists(savepath):
+        os.makedirs(savepath)
+    else:
+        for f in os.listdir(savepath):
+            os.remove(os.path.join(savepath,f))
+    print(config)
+    print(nn_spec)
+    wcgan_model = WCGAN(config, nn_spec, constants)
+    wcgan_model.train(train_data, val_data, test_data, val_func)
 
-savepath = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'learning_prog_idx{}'.format(config['pdf_index']))
-if not os.path.exists(savepath):
-    os.makedirs(savepath)
-else:
-    for f in os.listdir(savepath):
-        os.remove(os.path.join(savepath,f))
-print(config)
-print(nn_spec)
-wcgan_model = WCGAN(config, nn_spec, constants)
-wcgan_model.train(train_data, val_data, test_data, val_func)
+    # import raw data
+    path = 'datasets/{}/raw_data/test/data_raw.csv'.format(name)
+    assert os.path.exists(path),("raw dataset folder {} does not exist".format(dataset_dir))
 
-# import raw data
-path = 'datasets/{}/raw_data/test/data_raw.csv'.format(name)
-assert os.path.exists(path),("raw dataset folder {} does not exist".format(dataset_dir))
+    df_test = pd.read_csv(path, header=0)
+    aero_test_raw = df_test.loc[:, dataset.inputs+[CHANNEL_NAME]]
+    test_raw = Dataset.LabelledData(x= aero_test_raw.to_numpy()[:,:X_DIM],y = aero_test_raw.to_numpy()[:,X_DIM:])
 
-df_test = pd.read_csv(path, header=0)
-aero_test_raw = df_test.loc[:, dataset.inputs+[CHANNEL_NAME]]
-test_raw = Dataset.LabelledData(x= aero_test_raw.to_numpy()[:,:X_DIM],y = aero_test_raw.to_numpy()[:,X_DIM:])
+    x_values_scale, x_values_index, counts = np.unique(test_data.x, axis = 0, return_counts = True, return_index = True)
+    x_values = np.unique(test_raw.x, axis = 0)
+    num_samples_gen = 3000
 
-x_values_scale, x_values_index, counts = np.unique(test_data.x, axis = 0, return_counts = True, return_index = True)
-x_values = np.unique(test_raw.x, axis = 0)
-# print(x_values)
-# print('x-value-index', x_values_index)
-# print('counts', counts)
-num_samples_gen = 3000
+    sort =np.argsort(x_values_index)
+    x_values_scale = x_values_scale[sort]
+    x_values_index = x_values_index[sort]
+    x_values = x_values[sort]
+    start_idx = x_values_index
+    end_idx = counts+x_values_index
 
-sort =np.argsort(x_values_index)
-# print(sort)
-x_values_scale = x_values_scale[sort]
-x_values_index = x_values_index[sort]
-x_values = x_values[sort]
-start_idx = x_values_index
-end_idx = counts+x_values_index
+    samplepdf_imgs_path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'Sample_PDF')
 
-samplepdf_imgs_path = os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'Sample_PDF')
+    if not os.path.exists(samplepdf_imgs_path):
+        os.makedirs(samplepdf_imgs_path)
+    else:
+        for f in os.listdir(samplepdf_imgs_path):
+            os.remove(os.path.join(samplepdf_imgs_path,f))
 
-if not os.path.exists(samplepdf_imgs_path):
-    os.makedirs(samplepdf_imgs_path)
-else:
-    for f in os.listdir(samplepdf_imgs_path):
-        os.remove(os.path.join(samplepdf_imgs_path,f))
+    assert os.path.exists(samplepdf_imgs_path),("results folder {} does not exist".format(samplepdf_imgs_path))
 
-assert os.path.exists(samplepdf_imgs_path),("results folder {} does not exist".format(samplepdf_imgs_path))
+    gen_samples = np.zeros((num_samples_gen,len(x_values_scale)))
 
-gen_samples = np.zeros((num_samples_gen,len(x_values_scale)))
+    print('Plotting samples for all x-locations...')
+    for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
+        gen_samples[:,i] = get_samples(wcgan_model, values_scaled, num_samples_gen).squeeze(1)
+        plt.figure()
+        sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
+        sns.kdeplot(test_data.y[start_idx[i]:end_idx[i]].squeeze(), color='k', linestyle='--', label='True')
+        plt.title('x={}'.format(x_values[i]), fontsize=10)
+        plt.tight_layout()
+        plt.legend()
+        plt.savefig('{}/idx_{}.png'.format(samplepdf_imgs_path, i))
+        plt.close()
+    print('Plotting samples for all x-locations finished')
 
-print('Plotting samples for all x-locations...')
-for i, (idx,values_scaled) in enumerate(zip(x_values_index, x_values_scale)):
-    gen_samples[:,i] = get_samples(wcgan_model, values_scaled, num_samples_gen).squeeze(1)
-    plt.figure()
-    sns.kdeplot(gen_samples[:,i], color ='b',label='Gen')
-    sns.kdeplot(test_data.y[start_idx[i]:end_idx[i]].squeeze(), color='k', linestyle='--', label='True')
-    plt.title('x={}'.format(x_values[i]), fontsize=10)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig('{}/idx_{}.png'.format(samplepdf_imgs_path, i))
-    plt.close()
-print('Plotting samples for all x-locations finished')
 
-print('Writing samples...')
-np.savetxt(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv') ,gen_samples, delimiter=',')
-print('Done')
+    x_values_repeated = x_values.repeat(num_samples_gen, axis=0)
+    tmp = pd.read_csv("datasets/{}/raw_data/train/data_raw.csv".format(dataset.name),header=0, index_col=0)
+    scaling = tmp.loc[:, DATASET_NAME]
+    scaling_mean = scaling.mean()
+    scaling_std = scaling.std()
+    rescaled_samples = gen_samples*scaling_std+scaling_mean
+    rescaled_samples_ = rescaled_samples.reshape(-1,1, order='F')
+    combined = np.hstack((x_values_repeated,rescaled_samples_))
+    df_combined = pd.DataFrame(combined, columns = dataset.inputs+[CHANNEL_NAME])
+
+
+    print('Writing samples...')
+    # np.savetxt(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv') ,gen_samples, delimiter=',')
+    df_combined.to_csv(os.path.join(PLOT_PATH,PLT_DATASET_NAME,FILE_NAME,'samples.csv'))
+    print('Done')

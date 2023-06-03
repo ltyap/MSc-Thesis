@@ -6,7 +6,7 @@ from sklearn import model_selection as model
 from sklearn.preprocessing import StandardScaler
 import dataset_list 
 
-name = 'aerohydro'
+name = 'floating'
 print('Dataset:',name)
 
 dataset = dataset_list.get_dataset_spec(name)()

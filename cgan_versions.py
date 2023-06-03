@@ -120,7 +120,7 @@ class WCGAN(CGAN):
                 # data_logits.backward(mone)
 
                 #Sample from generator
-                noise_batch = self.get_gaussian().sample([batch_size]).to(self.device)
+                noise_batch = self.noise_dist.sample([batch_size]).to(self.device)
                 gen_input = torch.cat((x_batch, noise_batch), dim = 1)
                 with torch.no_grad():
                     gen_output = self.gen(gen_input)
@@ -143,7 +143,7 @@ class WCGAN(CGAN):
             self.gen.zero_grad()
             # Get new gen batch
             n_gen_samples = x_batch.shape[0]
-            new_noise_batch = self.get_gaussian().sample([n_gen_samples]).to(self.device)
+            new_noise_batch = self.noise_dist.sample([n_gen_samples]).to(self.device)
             new_gen_batch = self.gen(torch.cat((x_batch,new_noise_batch),dim = 1))
             new_gen_logits = self.critic(torch.cat((x_batch,new_gen_batch),dim = 1))
             gen_loss = self.gen_loss(new_gen_logits)
@@ -176,7 +176,7 @@ class WCGAN(CGAN):
                 data_batch_val = (val_tab.ys).to(self.device)
                 batch_size_val = len(data_batch_val)      
 
-                noise_batch_val = self.get_gaussian().sample([batch_size_val]).to(self.device)
+                noise_batch_val = self.noise_dist.sample([batch_size_val]).to(self.device)
                 gen_input_val = torch.cat((x_batch_val, noise_batch_val), dim = 1)
                 with torch.no_grad():
                     gen_output_val = self.gen(gen_input_val)
@@ -333,10 +333,6 @@ class WCGAN(CGAN):
         self.critic.load_state_dict(checkpoint["disc"])
         if "gen" in checkpoint:
             self.gen.load_state_dict(checkpoint["gen"])
-
-        # #W1 distances on conditional distributions based on saved model
-        # _,gradient_norm_val = self.compute_gradient_penalty(x_batch_val, gen_output_val, data_batch_val.detach())
-        # calc, estimate = self.wasserstein(test_data, gradient_norm_val)
         
         self.logging()
         finish_time = time.time() - start_time
@@ -483,7 +479,7 @@ class WdivCGAN(CGAN):
                 data_logits = self.critic(torch.cat((x_batch,data_batch), dim = 1))
 
                 #Sample from generator
-                noise_batch = self.get_gaussian().sample([batch_size]).to(self.device)
+                noise_batch = self.noise_dist.sample([batch_size]).to(self.device)
                 gen_input = torch.cat((x_batch, noise_batch), dim = 1)
                 with torch.no_grad():
                     gen_output = self.gen(gen_input)
@@ -506,7 +502,7 @@ class WdivCGAN(CGAN):
             self.gen.zero_grad()
             # Get new gen batch
             n_gen_samples = x_batch.shape[0]
-            new_noise_batch = self.get_gaussian().sample([n_gen_samples]).to(self.device)
+            new_noise_batch = self.noise_dist.sample([n_gen_samples]).to(self.device)
             new_gen_batch = self.gen(torch.cat((x_batch,new_noise_batch),dim = 1))
             new_gen_logits = self.critic(torch.cat((x_batch,new_gen_batch),dim = 1))
             gen_loss = self.gen_loss(new_gen_logits)
@@ -519,7 +515,7 @@ class WdivCGAN(CGAN):
             data_batch_val = (val_tab.ys).to(self.device)
             batch_size_val = len(data_batch_val)      
 
-            noise_batch_val = self.get_gaussian().sample([batch_size_val]).to(self.device)
+            noise_batch_val = self.noise_dist.sample([batch_size_val]).to(self.device)
             gen_input_val = torch.cat((x_batch_val, noise_batch_val), dim = 1)
             with torch.no_grad():
                 gen_output_val = self.gen(gen_input_val)

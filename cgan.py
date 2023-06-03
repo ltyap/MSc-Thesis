@@ -8,7 +8,9 @@ import numpy as np
 import pandas as pd
 import torch.distributions as tdists
 import time
-import ot
+import noise_dists as nds
+
+
 
 class CGAN:
     def __init__(self, config, nn_spec, constants) -> None:
@@ -18,6 +20,7 @@ class CGAN:
         self.disc = nn_spec['disc_spec']['type'](nn_spec['disc_spec']).to(self.device)
         self.gen = nn_spec['gen_spec']['type'](nn_spec['gen_spec']).to(self.device)
         self.config = config
+        self.noise_dist = nds.get_noise_dist(config, self.device)
         self.kernel_scale = None
         self.val_ll = []
         self.train_ll = []
@@ -98,6 +101,8 @@ class CGAN:
 
         best_save_path = os.path.join(self.param_dir,
                             "epoch_best.pt") # Path to save best params to
+        print("Best model saved to:", best_save_path)
+
         if self.nn_spec['disc_spec']['spectral_normalisation'] == None:
             gen_opt = torch.optim.RMSprop(self.gen.parameters(),lr = self.config["gen_lr"])
             disc_opt = torch.optim.RMSprop(self.disc.parameters(), lr = self.config["disc_lr"])
@@ -105,7 +110,6 @@ class CGAN:
             gen_opt = torch.optim.Adam(self.gen.parameters(),lr = self.config["gen_lr"], betas=(0.,0.9))
             disc_opt = torch.optim.Adam(self.disc.parameters(), lr = self.config["disc_lr"], betas=(0.,0.9))
 
-        # print(gen_opt)
         for epoch in range(self.config["epochs"]):
             epoch_disc_loss = []
             epoch_gen_loss = []
@@ -118,7 +122,7 @@ class CGAN:
 
                 disc_opt.zero_grad()
 
-                noise_batch = self.get_gaussian().sample([batch_size]).to(self.device)
+                noise_batch = self.noise_dist.sample([batch_size]).to(self.device)
 
                 #Sample from generator
                 gen_input = torch.cat((x_batch, noise_batch), dim = 1)
@@ -133,7 +137,7 @@ class CGAN:
                 #train generator
                 gen_opt.zero_grad()
                 n_gen_samples = batch_size
-                new_noise_batch = self.get_gaussian().sample([n_gen_samples]).to(self.device)
+                new_noise_batch = self.noise_dist.sample([n_gen_samples]).to(self.device)
 
                 new_gen_input = torch.cat((x_batch,new_noise_batch),dim = 1)
                 new_gen_batch = self.gen(new_gen_input)
@@ -168,7 +172,7 @@ class CGAN:
                 x_batch_val = (val_tab.xs).to(self.device)
                 data_batch_val = (val_tab.ys).to(self.device)
                 batch_size_val = len(data_batch_val)
-                noise_batch_val = self.get_gaussian().sample([batch_size_val]).to(self.device)
+                noise_batch_val = self.noise_dist.sample([batch_size_val]).to(self.device)
                 gen_input_val = torch.cat((x_batch_val, noise_batch_val), dim = 1)
                 with torch.no_grad():
                     gen_output_val = self.gen(gen_input_val)
@@ -202,6 +206,8 @@ class CGAN:
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
+
 
         title = 'loss'
         plt.figure()
@@ -212,6 +218,7 @@ class CGAN:
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'Fooling'
         plt.figure()
@@ -221,7 +228,8 @@ class CGAN:
         plt.xlabel('Epoch')
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
-
+        plt.close()
+        
         title = 'gradient norm'
         plt.figure()
         plt.plot(self.epoch_ll,self.gradient_norm_val)
@@ -229,6 +237,7 @@ class CGAN:
         plt.xlabel('Epoch')
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'wasserstein 1 distance'
         plt.figure()
@@ -239,6 +248,7 @@ class CGAN:
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'wasserstein 2 distance'
         plt.figure()
@@ -249,6 +259,7 @@ class CGAN:
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'mean conditional W1 distance'
         plt.figure()
@@ -260,6 +271,7 @@ class CGAN:
         plt.xlabel('Epoch')
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'mean conditional W2 distance'
         plt.figure()
@@ -271,6 +283,8 @@ class CGAN:
         plt.xlabel('Epoch')
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
+
 
         title = 'conditional W1 distance'
         plt.figure()
@@ -282,6 +296,7 @@ class CGAN:
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
 
         title = 'conditional W2 distance'
         plt.figure()
@@ -293,6 +308,8 @@ class CGAN:
         plt.legend()
         images_save_path = os.path.join(self.plots_path,"{}.png".format(title))
         plt.savefig(images_save_path)
+        plt.close()
+
 
         print("best ll:",best_ll)
         print("best mae:",best_mae)
@@ -315,12 +332,6 @@ class CGAN:
         disc_loss = disc_loss_gen+disc_loss_data
         return disc_loss
 
-    def get_gaussian(self):
-        return tdists.multivariate_normal.MultivariateNormal(
-                torch.zeros(self.config["noise_dim"], device=self.device),
-                torch.eye(self.config["noise_dim"], device=self.device)
-            ) #isotropic
-
     @torch.no_grad()
     def eval(self, dataset, kde_eval, use_best_kernel_scale=False):
         ks = None
@@ -337,7 +348,7 @@ class CGAN:
         n_samples = x.shape[0]
         x = x.to(self.device)
 
-        noise_sample = self.get_gaussian().sample([n_samples]).to(self.device)
+        noise_sample = self.noise_dist.sample([n_samples]).to(self.device)
 
         if batch_size and n_samples > batch_size:
             batch_iterator = zip(torch.split(x, batch_size,dim=0),

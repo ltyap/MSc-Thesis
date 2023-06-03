@@ -14,20 +14,15 @@ class Floating(Dataset):
         self.y_dim = 1
         self.synthetic = False        
         self.val_path = "datasets/{}/raw_data/train/validation/data_raw.dat".format(self.name)
-        self.channels = ['Mt_x_1_1_mean',
-       'Mt_y_1_1_mean', 'Mt_x_14_2_mean', 'Mt_y_14_2_mean', 'Mb_x_1_1_mean',
-       'Mb_y_1_1_mean', 'Fl_m1br1_EfTn_mean', 'Fl_m1br2_EfTn_mean',
-       'Fl_m2br1_EfTn_mean', 'Fl_m2br2_EfTn_mean', 'Fl_m3br1_EfTn_mean',
-       'Fl_m3br2_EfTn_mean', 'Roll_OF_mean', 'Pitch_OF_mean', 'Yaw_OF_mean',
-       'uB1_x_17_mean', 'uB1_y_17_mean', 'uB1_z_17_mean', 'Mt_x_1_1_max',
-       'Mt_y_1_1_max', 'Mt_x_14_2_max', 'Mt_y_14_2_max', 'Mb_x_1_1_max',
-       'Mb_y_1_1_max', 'uaT_x_15_max', 'uaT_y_15_max', 'uaT_z_15_max',
-       'Fl_m1br1_EfTn_max', 'Fl_m1br2_EfTn_max', 'Fl_m2br1_EfTn_max',
-       'Fl_m2br2_EfTn_max', 'Fl_m3br1_EfTn_max', 'Fl_m3br2_EfTn_max',
-       'Roll_OF_max', 'Pitch_OF_max', 'Yaw_OF_max', 'uB1_x_17_max',
-       'uB1_y_17_max', 'uB1_z_17_max', 'Mt_y_1_1_stel',
-        'Mt_y_14_2_stel', 'Mb_x_1_1_stel', 'Mb_y_1_1_stel', 'Mt_x_1_1_stel',
-       'Mt_x_14_2_stel']
+        self.channels = ['Mt_x_1_1_rms', 'Mt_x_14_2_rms', 
+                        'Mb_x_1_1_rms', 'Mb_y_1_1_rms',
+                        'Mt_x_1_1_mean', 'Mt_x_14_2_mean',
+                        'Mb_x_1_1_mean', 'Mb_y_1_1_mean',
+                        'Fl_m1br1_EfTn_rms',
+                        'Fl_m1br1_EfTn_mean', 'Pitch_OF_mean',
+                        'Mt_x_1_1_stel', 'Mt_y_1_1_stel', 'Mt_x_14_2_stel',
+                        'Mt_y_14_2_stel', 'Mb_x_1_1_stel', 'Mb_y_1_1_stel'
+                        ]
         
         self.inputs = ['URef','PLExp','TI','Hs','Tp','Wdir','Yaw']
 

@@ -124,7 +124,7 @@ def conditional_wasserstein(model, data):
     tmp2 = []
     for i, (start, end) in enumerate(zip(start_idx,end_idx)):
         y_real = y[start:end] # real output for each conditional input value
-        x_unique_repeated = torch.Tensor(x_unique[i,:]).repeat(1000, 1)
+        x_unique_repeated = torch.Tensor(x_unique[i,:]).repeat(3000, 1)
         samples = model.sample(x_unique_repeated, batch_size=len(x_unique_repeated))
 
         M_wasserstein1 = ot.wasserstein_1d(samples.cpu().detach().numpy(), y_real, p = 1)
