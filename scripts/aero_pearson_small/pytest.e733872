@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "/home/litoongyap/cgan/CGAN_aero_pearson_small.py", line 569, in <module>
-    cgan_model_Pearson_small.train(train_data,val_func)
-  File "/home/litoongyap/cgan/CGAN_aero_pearson_small.py", line 314, in train
-    images_save_path = os.path.join(IMG_PATH,"./history_aero_pearson_small.png")
-NameError: name 'IMG_PATH' is not defined
