@@ -110,6 +110,7 @@ class CGAN:
             gen_opt = torch.optim.Adam(self.gen.parameters(),lr = self.config["gen_lr"], betas=(0.,0.9))
             disc_opt = torch.optim.Adam(self.disc.parameters(), lr = self.config["disc_lr"], betas=(0.,0.9))
 
+        torch.autograd.set_detect_anomaly(True)
         for epoch in range(self.config["epochs"]):
             epoch_disc_loss = []
             epoch_gen_loss = []
@@ -130,10 +131,16 @@ class CGAN:
                 #Train discriminator
                 data_logits = self.disc(torch.cat((x_batch, data_batch), dim = 1))
                 gen_logits = self.disc(torch.cat((x_batch,gen_output), dim = 1))
+                # print('gen logits:', gen_logits)
+                # print('max gen logit:', torch.max(gen_logits))
+                # print('data logits:', data_logits)
+                # print('max data logit:', torch.max(data_logits))
                 disc_loss = self.disc_loss(gen_logits, data_logits)
+                # print('disc loss:', disc_loss)
+
                 disc_loss.backward()
                 disc_opt.step()
-
+                torch.nn.utils.clip_grad_norm_(self.disc.parameters(), max_norm=1)
                 #train generator
                 gen_opt.zero_grad()
                 n_gen_samples = batch_size
@@ -145,13 +152,16 @@ class CGAN:
                 gen_loss = self.gen_loss(new_gen_logits)
                 gen_loss.backward()
                 gen_opt.step()
+                # torch.nn.utils.clip_grad_norm_(self.gen.parameters(), max_norm=1)
 
                 batch_fooling = torch.mean(torch.sigmoid(new_gen_logits))
                 epoch_fooling.append(batch_fooling.item())
-                epoch_disc_loss.append(disc_loss.item())
-                epoch_gen_loss.append(gen_loss.item())
+                epoch_disc_loss.append(disc_loss.item())#disc loss over all batches
+                epoch_gen_loss.append(gen_loss.item())#gen loss over all batches
 
             if val_func and ((epoch+1) % self.config["val_interval"] == 0):
+                # print("Gen loss:", np.mean(epoch_gen_loss))
+                # print("Disc loss:", np.mean(epoch_disc_loss))
                 evaluation_vals, evaluation_vals_train = val_func(self, epoch)                
                 self.discriminator_loss.append(np.mean(epoch_disc_loss))
                 self.generator_loss.append(np.mean(epoch_gen_loss))
@@ -363,14 +373,21 @@ class CGAN:
             gen_input = torch.cat((x,noise_sample), dim = 1)
             samples = self.gen(gen_input)
         return samples
+    
+    def load_model(self, best_save_path):
+        checkpoint = torch.load(best_save_path, map_location=self.device)
+        self.disc.load_state_dict(checkpoint["disc"])
+        if "gen" in checkpoint:
+            self.gen.load_state_dict(checkpoint["gen"])
+
     def logging(self):
         if any(self.mean_cond_w1_dist_train):
-            col = ['discriminator','generator', 'fooling', 
-                   'Actual wasserstein 1 distance (train)', 'Actual wasserstein 1 distance (val)',
-                    'Actual wasserstein 2 distance (train)','Actual wasserstein 2 distance (val)',
-                    'mean conditional wasserstein 1 distance (train)','mean conditional wasserstein 1 distance (val)',
-                    'mean conditional wasserstein 2 distance (train)','mean conditional wasserstein 2 distance (val)']
-            losses = pd.DataFrame(zip(self.discriminator_loss, self.generator_loss, self.fooling,
+            col = ['epoch','discriminator','generator', 'fooling', 
+                   'Actual Wasserstein-1 distance (Training)', 'Actual Wasserstein-1 distance (Validation)',
+                    'Actual Wasserstein-2 distance (Training)','Actual Wasserstein-2 distance (Validation)',
+                    'mean conditional Wasserstein-1 distance (Training)','mean conditional Wasserstein-1 distance (Validation)',
+                    'mean conditional Wasserstein-2 distance (Training)','mean conditional Wasserstein-2 distance (Validation)']
+            losses = pd.DataFrame(zip(self.epoch_ll,self.discriminator_loss, self.generator_loss, self.fooling,
                                     self.w1_dist_train, self.w1_dist,
                                     self.w2_dist_train, self.w2_dist,
                                     self.mean_cond_w1_dist_train, self.mean_cond_w1_dist,
@@ -378,18 +395,20 @@ class CGAN:
                                 columns=col)
             cond_wdist = pd.DataFrame(zip(self.cond_w1_dist_train, self.cond_w1_dist,
                                           self.cond_w2_dist_train, self.cond_w2_dist),
-                                          columns=["cond w1 dist (train)","cond w1 dist (test)",
-                                                   "cond w2 dist (train)","cond w2 dist (test)"])
+                                          columns=["cond w1 dist (Training)","cond w1 dist (Test)",
+                                                   "cond w2 dist (Training)","cond w2 dist (Test)"])
         else:
-            col = ['discriminator','generator', 'fooling', 
-                   'Actual wasserstein 1 distance (val)', 'Actual wasserstein 2 distance (val)',
-                    'mean conditional wasserstein 1 distance (test)', 'mean conditional wasserstein 2 distance (test)']
-            losses = pd.DataFrame(zip(self.discriminator_loss, self.generator_loss, self.fooling,
+            col = ['epoch','discriminator', 'generator', 'fooling', 
+                   'Actual Wasserstein-1 distance (Training)', 'Actual Wasserstein-2 distance (Training)',
+                   'Actual Wasserstein-1 distance (Validation)', 'Actual Wasserstein-2 distance (Validation)',
+                    'mean conditional Wasserstein-1 distance (Test)', 'mean conditional Wasserstein-2 distance (Test)']
+            losses = pd.DataFrame(zip(self.epoch_ll,self.discriminator_loss, self.generator_loss, self.fooling,
+                                    self.w1_dist_train, self.w2_dist_train,
                                     self.w1_dist, self.w2_dist,
                                     self.mean_cond_w1_dist, self.mean_cond_w2_dist),
                                 columns=col)
             cond_wdist = pd.DataFrame(zip(self.cond_w1_dist, self.cond_w2_dist),
-                                columns=["cond w1 dist (test)", "cond w2 dist (test)"])
+                                columns=["cond w1 dist (Test)", "cond w2 dist (Test)"])
         losses.to_csv('{}/nn_losses.csv'.format(self.plots_path))
         cond_wdist.to_csv('{}/wdist.csv'.format(self.plots_path))
         ll = pd.DataFrame(zip(self.epoch_ll,self.train_ll, self.val_ll),
