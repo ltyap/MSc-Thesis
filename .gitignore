@@ -8,3 +8,4 @@ torch/
 postprocess/
 aero_MDN_*/
 datasets/floating
+dataset_specifications/__pycache__/
