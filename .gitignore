@@ -1,10 +1,11 @@
 __pycache__/
-param_best
+param_best/
 plots/
-plots_server/
-old/
+plots_old/
 runscript.pbs.orig
 torch/
 postprocess/
-aero_MDN_*/
-datasets/floating
+datasets/floating/
+dataset_specifications/__pycache__/
+scripts/
+datasets/old
