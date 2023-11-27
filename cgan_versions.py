@@ -53,7 +53,7 @@ class WCGAN(CGAN):
         gradients_norm = gradients.norm(2, dim=1)
         # print('gradient norm shape',gradients_norm.shape)
 
-        if self.config['one-sided']:
+        if self.config['one_sided']:
             gradient_penalty = (torch.clamp(gradients_norm-1, min=0)**2).mean()
         else:
             gradient_penalty = torch.mean((gradients_norm-1)**2)

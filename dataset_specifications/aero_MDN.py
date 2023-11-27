@@ -12,17 +12,29 @@ class AeroMDNSet(Dataset):
         self.name = 'aero_MDN'
         self.x_dim = 3
         self.y_dim = 1
-        self.synthetic = False        
+        self.synthetic = False
+
+        # path to separate raw validation dataset (if it exists)
+        self.raw_val_data_path = "datasets/{}/raw_data/train/validation/data_raw.dat".format(self.name)
+        
+        # path to raw training/test data
+        self.raw_train_data_path = "datasets/{}/raw_data/train/data_raw.dat".format(self.name)
+        self.raw_test_data_path = "datasets/{}/raw_data/test/data_raw.dat".format(self.name)
+
+        # path to data used for scaling training/test/val data
+        self.scaling_data_path = "datasets/aero/raw_data/train/data_raw.dat"
+
+        # Inputs used for training
+        self.inputs = ['URef','PLExp','IECturbc']
+
+        # Channels of interest (used for training/plotting)
         self.channels = ['TwrBsMyt_[kN-m] max', 'TwrBsMyt_[kN-m] stddev', 'TwrBsMyt_[kN-m] ST_DEL', 
        'RootMyb1_[kN-m] mean', 'RootMyb1_[kN-m] max', 'RootMyb1_[kN-m] stddev','RootMyb1_[kN-m] ST_DEL',
         'RootMxb1_[kN-m] mean', 'RootMxb1_[kN-m] max', 'RootMxb1_[kN-m] stddev', 'RootMxb1_[kN-m] ST_DEL',
      'YawBrMyn_[kN-m] mean', 'YawBrMyn_[kN-m] max','YawBrMyn_[kN-m] stddev', 'YawBrMyn_[kN-m] ST_DEL']
         
-        self.inputs = ['URef','PLExp','IECturbc']
-        path = "datasets/{}/raw_data/train/validation/data_raw.dat".format(self.name)
-        self.val_path = path
-        # self.channel_name = 'YawBrMyn_[kN-m] ST_DEL' #----> set accordingly
-        self.key = {
+        # folder names for each load channel
+        self.folder_names = {
             "TwrBsMyt_[kN-m] max": "TwrBsMyt_max",
             'TwrBsMyt_[kN-m] stddev': "TwrBsMyt_stddev",
             'TwrBsMyt_[kN-m] ST_DEL':"TwrBsMyt_ST_DEL", 
@@ -39,28 +51,32 @@ class AeroMDNSet(Dataset):
             'YawBrMyn_[kN-m] stddev': "YawBrMyn_stddev",
             'YawBrMyn_[kN-m] ST_DEL': "YawBrMyn_ST_DEL"
         }
+
+        # location to save preprocessed files
         self.dataset_save_path = os.path.join("datasets",self.name)
 
     def load_data(self):
-        df_train = pd.read_csv("datasets/{}/raw_data/train/data_raw.dat".format(self.name), header = 0, index_col = 0)
-        df_test = pd.read_csv("datasets/{}/raw_data/test/data_raw.dat".format(self.name), header = 0, index_col = 0)
+        df_train = pd.read_csv(self.raw_train_data_path, header = 0, index_col = 0)
+        df_test = pd.read_csv(self.raw_test_data_path, header = 0, index_col = 0)
 
-        tmp = self.inputs+self.channels
-        train = df_train.loc[:, tmp]
-        test = df_test.loc[:, tmp]
+        # Make sure order of columns are the same in train and test datasets
+        columns = df_train.columns.values.tolist()
+
+        train = df_train.loc[:, columns]
+        test = df_test.loc[:, columns]
+
         self.train_set = train
         self.test_set = test
         
-        path = "datasets/aero/raw_data/train/data_raw.dat"
-        print("Path to scaling data:", path)
-        scaling_ref = pd.read_csv(path, header = 0, index_col = 0) # ----------------------------> update training data path here (used only for scaling)
-        self.scaling_ref = scaling_ref.loc[:, tmp]
-
+        print("Path to data used for scaling:", self.scaling_data_path)
+        scaling_ref = pd.read_csv(self.scaling_data_path, header = 0, index_col = 0) # ----------------------------> update training data path here (used only for scaling)
+        # Make sure scaling ref is same order as training data
+        self.scaling_ref = scaling_ref.loc[:, columns]
 
         return train, test
     def plot_test_data(self, test_data_scaled):
         for channel_name in self.channels:
-            channel = self.key[channel_name]
+            channel = self.folder_names[channel_name]
             plot_path = './plots/{}/{}'.format(self.name, channel)
             plot_name = 'Scatter_Test_scaled'
             # Initialise directory
@@ -75,7 +91,6 @@ class AeroMDNSet(Dataset):
                 plt.close()
 
             print(self.inputs+[channel_name])
-            # print(test_data_scaled.head())
             test_data_scaled_selection = test_data_scaled.loc[:,self.inputs+[channel_name]]
             
             test_scaled_LD = dataset.LabelledData(x= test_data_scaled_selection.to_numpy()[:,:self.x_dim],

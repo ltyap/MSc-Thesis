@@ -1,0 +1,15 @@
+{
+"gen_spec" : {
+    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "activation": "relu",
+    "type": "noise-injection"
+},
+"disc_spec": {
+    "nodes_per_layer": [64, 64, 64, 64, 64, 64],
+    "cond_layers": [64,64],
+    "other_layers":[64,64],
+    "output_dim": 1,
+    "activation": "relu",
+    "type": "double-input"
+}
+}

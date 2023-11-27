@@ -1,0 +1,23 @@
+{
+"noise_dim":5,
+"noise_dist": "gaussian",
+"epochs": 50,
+"batch_size": 200,
+"gen_lr": 2e-4,
+"disc_lr": 1e-4,
+"val_interval": 20,
+"sample_batch_size": 1000,
+"eval_samples": 200,
+"kernel_scales": 50,
+"kernel_scale_min": 0.001,
+"kernel_scale_max": 0.7,
+"pdf_index": "0,500",
+"kde_batch_size": 10,
+"models": ["wcgan", "pearson"],
+"folder_names": ["WCGAN-A3-test","PearsonCGAN"],
+"architecture_dir": "../cgan_specs/base.json",
+"gen_samples": 1000,
+"new_data": true,
+"new_data_size": 6000,
+"scatter": false
+}

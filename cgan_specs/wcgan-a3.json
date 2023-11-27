@@ -1,0 +1,13 @@
+{
+"gen_spec" : {
+    "nodes_per_layer": [64, 64, 64, 64, 64, 64, 64],
+    "activation": "relu",
+    "type": "feedforward"
+},
+"disc_spec": {
+    "nodes_per_layer": [64, 64, 64, 64, 64, 64, 64],
+    "output_dim": 1,
+    "activation": "relu",
+    "type": "feedforward"
+}
+}

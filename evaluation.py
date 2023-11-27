@@ -48,15 +48,17 @@ def evaluate_model(model, data_val, data_train, data_test=None, data_train_repea
         evaluation_vals_train['cond Wasserstein-2 dist'] = cond_w2_dist_train
     if make_plots:
         if config["scatter"]:
-            model_samples = model.sample(data_val.x, batch_size = config["eval_batch_size"])
+            model_samples = model.sample(data_val.x, batch_size = config["sample_batch_size"])
             if type(model_samples) == torch.Tensor:
                 model_samples = model_samples.to("cpu")
             model_data = LabelledData(x=data_val.x, y = model_samples)
             plot_title = 'Training epoch {}'.format(epoch)
             sample_sets = [data_val, model_data]
             labels = ["Ground Truth", "model"]
-            plot_path = os.path.join(model.constants['plot_path'],model.constants['plt_dataset_name'], model.constants['file_name'])
- 
+            plot_path = os.path.join(model.constants['plot_path'],model.constants['plt_dataset_name'],
+                                      model.constants['file_name'], config['prog_prefix'],
+                                      config['scatter_prefix'])
+
             plot_samples(sample_sets, file_name = epoch, path_name = plot_path,
                         labels = labels, title=plot_title, range_dataset=data_val)
         if config["pdf_index"]:
@@ -67,7 +69,6 @@ def evaluate_model(model, data_val, data_train, data_test=None, data_train_repea
                 for idx in list_of_indexes:
                     tmp = indexes(data_test.x[idx], data_test.x)
                     model_samples = model.sample(data_test.x[tmp])
-                    # print('Model samples:', model_samples)
                     if type(model_samples) == torch.Tensor:
                         model_samples = model_samples.to("cpu")
                     plt.figure()
@@ -76,7 +77,8 @@ def evaluate_model(model, data_val, data_train, data_test=None, data_train_repea
                     title = "Epoch {}, x = {}".format(epoch,data_test.x[idx].to('cpu'))
                     plt.title(title, fontsize=10)
                     plt.legend()
-                    savepath = os.path.join(model.plots_path,'learning_prog_idx{}'.format(idx))
+                    savepath = os.path.join(model.plots_path, config['prog_prefix'],
+                                            '{}_idx{}'.format(config['pdf_index_prefix'],idx))
                     if not os.path.exists(savepath):
                         os.makedirs(savepath)
                     assert os.path.exists(savepath),("dataset folder {} does not exist".format(savepath))
@@ -145,8 +147,7 @@ def kde_eval(model, data, kernel_scale=None):
     x = data.x.to(model.device)
     x_repeated = torch.repeat_interleave(x, repeats = model.config["eval_samples"], dim = 0)
     shape_y = data.y.shape
-    # samples_wasserstein = model.sample(x, batch_size = model.config["eval_batch_size"])
-    samples = model.sample(x_repeated, batch_size = model.config["eval_batch_size"]).reshape(
+    samples = model.sample(x_repeated, batch_size = model.config["eval_samples"]).reshape(
         shape_y[0],model.config["eval_samples"],shape_y[1])
     y = data.y.to(model.device)
     diff = samples - y.unsqueeze(1)

@@ -103,13 +103,9 @@ class CGAN:
                             "epoch_best.pt") # Path to save best params to
         print("Best model saved to:", best_save_path)
 
-        if self.nn_spec['disc_spec']['spectral_normalisation'] == None:
-            gen_opt = torch.optim.RMSprop(self.gen.parameters(),lr = self.config["gen_lr"])
-            disc_opt = torch.optim.RMSprop(self.disc.parameters(), lr = self.config["disc_lr"])
-        else:
-            gen_opt = torch.optim.Adam(self.gen.parameters(),lr = self.config["gen_lr"], betas=(0.,0.9))
-            disc_opt = torch.optim.Adam(self.disc.parameters(), lr = self.config["disc_lr"], betas=(0.,0.9))
-
+        gen_opt = torch.optim.RMSprop(self.gen.parameters(),lr = self.config["gen_lr"])
+        disc_opt = torch.optim.RMSprop(self.disc.parameters(), lr = self.config["disc_lr"])
+        
         torch.autograd.set_detect_anomaly(True)
         for epoch in range(self.config["epochs"]):
             epoch_disc_loss = []

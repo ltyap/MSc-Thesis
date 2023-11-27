@@ -13,7 +13,21 @@ class Floating(Dataset):
         self.x_dim = 7
         self.y_dim = 1
         self.synthetic = False        
-        self.val_path = "datasets/{}/raw_data/train/validation/data_raw.dat".format(self.name)
+
+        # path to raw validation dataset (if it exists)
+        self.raw_val_data_path = "datasets/{}/raw_data/train/validation/data_raw.dat".format(self.name)
+
+        # path to raw training/test data
+        self.raw_train_data_path = "datasets/{}/raw_data/train/data_raw.dat".format(self.name)
+        self.raw_test_data_path = "datasets/{}/raw_data/test/data_raw.dat".format(self.name)
+
+        # path to data used for scaling training/test/val data
+        self.scaling_data_path = "datasets/floating/raw_data/train/data_raw.dat"
+
+        # Inputs used for training
+        self.inputs = ['URef','PLExp','TI','Hs','Tp','Wdir','Yaw']
+
+        # Channels of interest (used for training/plotting)
         self.channels = ['Mt_x_1_1_rms', 'Mt_x_14_2_rms', 
                         'Mb_x_1_1_rms', 'Mb_y_1_1_rms',
                         'Mt_x_1_1_mean', 'Mt_x_14_2_mean',
@@ -24,29 +38,51 @@ class Floating(Dataset):
                         'Mt_y_14_2_stel', 'Mb_x_1_1_stel', 'Mb_y_1_1_stel'
                         ]
         
-        self.inputs = ['URef','PLExp','TI','Hs','Tp','Wdir','Yaw']
+        # folder names for each load channel
+        self.folder_names = {'Mt_x_1_1_rms':'Mt_x_1_1_rms',
+                            'Mt_x_14_2_rms':'Mt_x_14_2_rms', 
+                            'Mb_x_1_1_rms':'Mb_x_1_1_rms', 
+                            'Mb_y_1_1_rms':'Mb_y_1_1_rms',
+                            'Mt_x_1_1_mean':'Mt_x_1_1_mean',
+                            'Mt_x_14_2_mean':'Mt_x_14_2_mean',
+                            'Mb_x_1_1_mean':'Mb_x_1_1_mean',
+                            'Mb_y_1_1_mean':'Mb_y_1_1_mean',
+                            'Fl_m1br1_EfTn_rms':'Fl_m1br1_EfTn_rms',
+                        'Fl_m1br1_EfTn_mean':'Fl_m1br1_EfTn_mean',
+                        'Pitch_OF_mean':'Pitch_OF_mean',
+                        'Mt_x_1_1_stel':'Mt_x_1_1_stel',
+                        'Mt_y_1_1_stel':'Mt_y_1_1_stel',
+                        'Mt_x_14_2_stel':'Mt_x_14_2_stel',
+                        'Mt_y_14_2_stel':'Mt_y_14_2_stel',
+                        'Mb_x_1_1_stel':'Mb_x_1_1_stel',
+                        'Mb_y_1_1_stel':'Mb_y_1_1_stel'
+        }
 
+        # location to save preprocessed files
         self.dataset_save_path = os.path.join("datasets",self.name)
 
     def load_data(self):
-        df_train = pd.read_csv("datasets/{}/raw_data/train/data_raw.csv".format(self.name), header=0)
-        df_test = pd.read_csv("datasets/{}/raw_data/test/data_raw.csv".format(self.name), header=0)
-        tmp = self.inputs+self.channels
-        train = df_train.loc[:, tmp]
-        test = df_test.loc[:, tmp]
+        df_train = pd.read_csv(self.raw_train_data_path, header=0)
+        df_test = pd.read_csv(self.raw_test_data_path, header=0)
+        
+        # Make sure order of columns are the same in train and test datasets
+        columns = df_train.columns.values.tolist()
+
+        train = df_train.loc[:, columns]
+        test = df_test.loc[:, columns]
+
         self.train_set = train
         self.test_set = test
 
-        path = "datasets/{}/raw_data/train/data_raw.csv".format(self.name)
-        print("Path to scaling data:", path)
-        scaling_ref = pd.read_csv(path, header = 0) # ----------------------------> update training data path here (used only for scaling)
-        self.scaling_ref = scaling_ref.loc[:, tmp]
+        print("Path to scaling data:", self.scaling_data_path)
+        scaling_ref = pd.read_csv(self.scaling_data_path, header = 0) # ----------------------------> update training data path here (used only for scaling)
+        self.scaling_ref = scaling_ref.loc[:, columns]
 
         return train, test
     def plot_test_data(self, test_data_scaled):
         for channel_name in self.channels:
-            # channel = self.key[channel_name]
-            plot_path = './plots/{}/{}'.format(self.name, channel_name)
+            channel = self.folder_names[channel_name]
+            plot_path = './plots/{}/{}'.format(self.name, channel)
             plot_name = 'Scatter_Test_scaled'
             # Initialise directory
             if not os.path.exists(plot_path):
@@ -89,6 +125,6 @@ class Floating(Dataset):
             for _, (start, end) in enumerate(zip(start_idx,end_idx)):
                 plt.figure()
                 sns.kdeplot(test_scaled_LD.y[start:end].squeeze(), color='k')
-                plt.title('x={}, idx = {}-{}'.format(test_LD.x[start], start, end-1), fontsize=10)
+                plt.title('x={}, idx = {}-{}'.format(test_LD.x[start], start, end-1), fontsize=8)
                 plt.savefig('{}/idx_{}-{}.png'.format(testpdf_plot_path, start, end-1))
                 plt.close()
